@@ -1041,7 +1041,7 @@ private fun GamingChatColumn(
                 Text("Stream Summary", style = MaterialTheme.typography.labelSmall, color = GamingLiveViolet)
                 Text(
                     text = state.viralBannerText
-                        ?: state.lastCreatorUtterance.ifBlank { "Live session ${formatDuration(state.elapsedSec)} • ${state.uniqueParticipants} active chatters" },
+                        ?: "Live session ${formatDuration(state.elapsedSec)} • ${state.uniqueParticipants} active chatters",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary,
                     maxLines = 2
@@ -1112,41 +1112,19 @@ private fun GamingChatColumn(
 
 @Composable
 fun CreatorUtteranceBanner(state: LiveSessionUiState) {
-    val activeSpeech = state.creatorPartialSpeech.ifBlank { state.lastCreatorUtterance }
-    if (activeSpeech.isBlank() && state.viralBannerText == null) return
-
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        state.viralBannerText?.let { viral ->
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = FameMint.copy(alpha = 0.22f),
-                border = BorderStroke(1.dp, FameMint)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = FameMint, modifier = Modifier.size(14.dp))
-                    Text(viral, style = MaterialTheme.typography.labelSmall, color = FameMint)
-                }
-            }
-        }
-        if (activeSpeech.isNotBlank()) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = StudioObsidian.copy(alpha = 0.78f),
-                border = BorderStroke(1.dp, StudioOutline)
-            ) {
-                Text(
-                    text = if (state.creatorPartialSpeech.isNotBlank()) "Listening: \"$activeSpeech\"" else "You said: \"$activeSpeech\"",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                )
-            }
+    val viral = state.viralBannerText ?: return
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = FameMint.copy(alpha = 0.22f),
+        border = BorderStroke(1.dp, FameMint)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = FameMint, modifier = Modifier.size(14.dp))
+            Text(viral, style = MaterialTheme.typography.labelSmall, color = FameMint)
         }
     }
 }

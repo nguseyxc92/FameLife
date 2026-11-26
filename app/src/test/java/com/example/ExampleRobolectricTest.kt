@@ -49,6 +49,8 @@ class ExampleRobolectricTest {
         }
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Simulation & Privacy Disclosure").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("onboarding_name_input").performScrollTo()
+        composeTestRule.onNodeWithText("Local Creator Profile").assertIsDisplayed()
         composeTestRule.onNodeWithTag("onboarding_guest_btn").performScrollTo().performClick()
         composeTestRule.waitForIdle()
         assertTrue(guestClicked)
@@ -87,5 +89,24 @@ class ExampleRobolectricTest {
         composeTestRule.onNodeWithTag("platform_card_photo_live").performClick()
         composeTestRule.waitForIdle()
         assertEquals(LivePlatformMode.PHOTO_LIVE, selectedMode)
+    }
+
+    @Test
+    fun `live utterance banner hides spoken transcription caption while keeping viral spike`() {
+        composeTestRule.setContent {
+            FameLifeTheme {
+                com.example.ui.screens.CreatorUtteranceBanner(
+                    state = com.example.viewmodel.LiveSessionUiState(
+                        creatorPartialSpeech = "Hey everyone welcome to the stream",
+                        lastCreatorUtterance = "How is everyone doing today?",
+                        viralBannerText = "Viral surge • +240 viewers!"
+                    )
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Viral surge • +240 viewers!").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Listening: \"Hey everyone welcome to the stream\"").assertDoesNotExist()
+        composeTestRule.onNodeWithText("You said: \"How is everyone doing today?\"").assertDoesNotExist()
     }
 }

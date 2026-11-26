@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,10 +56,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.R
 import com.example.data.CreatorProfileEntity
 import com.example.data.LedgerEntryEntity
 import com.example.data.ReturningFanEntity
@@ -571,13 +575,53 @@ fun SettingsScreen(
                     color = StudioSurface,
                     border = BorderStroke(1.dp, StudioOutline)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("About FameLife", style = MaterialTheme.typography.titleMedium)
-                        Text("Developed by Tebib Labs • Independent simulation studio.", style = MaterialTheme.typography.bodyMedium, color = FameMint)
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.ic_famelife_icon),
+                                contentDescription = "FameLife app icon",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                            )
+                            Text("About Tebib Labs", style = MaterialTheme.typography.titleMedium)
+                        }
+                        Image(
+                            painter = painterResource(R.drawable.tebib_labs_logo),
+                            contentDescription = "Tebib Labs logo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(96.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                        )
                         Text(
-                            "Live modes are inspired by Instagram Live, TikTok LIVE, YouTube Live, and Twitch UX conventions. FameLife is not affiliated with or endorsed by any social media platform. All viewers, chats, and gifts are simulated.",
+                            text = "Tebib Labs is an independent technology and software development company focused on artificial intelligence, computational engineering, scientific software and interactive digital experiences. We build innovative, intelligent and user-focused applications that connect engineering, technology and creativity.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary
+                        )
+                        Text(
+                            text = "FameLife is developed by Tebib Labs.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = FameMint,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "© 2026 Tebib Labs. All rights reserved.",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Live modes are inspired by Instagram Live, TikTok LIVE, YouTube Live, and Twitch UX conventions. FameLife is not affiliated with or endorsed by any social media platform. All viewers, chats, and gifts are simulated.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextMuted
                         )
                     }
                 }

@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/ic_famelife_foreground_1795689717666"
+        android:drawable="@drawable/ic_famelife_icon"
         android:gravity="center" />
 </layer-list>

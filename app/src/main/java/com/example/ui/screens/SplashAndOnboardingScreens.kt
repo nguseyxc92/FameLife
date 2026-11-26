@@ -7,7 +7,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,16 +48,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.R
 import com.example.data.ProfilePhotoStorage
 import com.example.ui.components.ViewerAvatar
 import com.example.ui.theme.FameMint
@@ -99,57 +100,37 @@ fun SplashScreen(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
+                .widthIn(max = 460.dp)
                 .scale(scale.value)
                 .alpha(alpha.value)
                 .padding(24.dp)
         ) {
-            FameLifeEmblem(modifier = Modifier.size(96.dp))
-            Spacer(Modifier.height(20.dp))
-            Text(
-                text = "FameLife",
-                style = MaterialTheme.typography.displayLarge,
-                color = TextPrimary
+            Image(
+                painter = painterResource(R.drawable.famelife_logo_poster),
+                contentDescription = "FameLife Experience the spotlight logo",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(24.dp))
             )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Experience the spotlight.",
-                style = MaterialTheme.typography.titleMedium,
-                color = FameMint
+            Spacer(Modifier.height(24.dp))
+            Image(
+                painter = painterResource(R.drawable.tebib_labs_logo),
+                contentDescription = "Tebib Labs logo",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .width(150.dp)
+                    .height(52.dp)
+                    .clip(RoundedCornerShape(12.dp))
             )
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 text = "TEBIB LABS • LIVE SIMULATION",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextMuted
             )
         }
-    }
-}
-
-@Composable
-fun FameLifeEmblem(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val r = minOf(size.width, size.height) / 2f
-        val cx = size.width / 2f
-        val cy = size.height / 2f
-        drawCircle(
-            brush = Brush.radialGradient(listOf(FameMint.copy(alpha = 0.25f), Color.Transparent)),
-            radius = r,
-            center = androidx.compose.ui.geometry.Offset(cx, cy)
-        )
-        drawCircle(
-            color = FameMint,
-            radius = r * 0.72f,
-            center = androidx.compose.ui.geometry.Offset(cx, cy),
-            style = Stroke(width = r * 0.14f)
-        )
-        val play = Path().apply {
-            moveTo(cx - r * 0.22f, cy - r * 0.30f)
-            lineTo(cx + r * 0.34f, cy)
-            lineTo(cx - r * 0.22f, cy + r * 0.30f)
-            close()
-        }
-        drawPath(play, color = Color.White)
     }
 }
 
@@ -193,7 +174,14 @@ fun OnboardingScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                FameLifeEmblem(modifier = Modifier.size(44.dp))
+                Image(
+                    painter = painterResource(R.drawable.ic_famelife_icon),
+                    contentDescription = "FameLife icon",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                )
                 Column {
                     Text("Welcome to FameLife", style = MaterialTheme.typography.headlineMedium)
                     Text(
@@ -244,7 +232,7 @@ fun OnboardingScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Optional Local Creator Profile",
+                        text = "Local Creator Profile",
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
@@ -290,7 +278,7 @@ fun OnboardingScreen(
                     OutlinedTextField(
                         value = displayName,
                         onValueChange = { displayName = it },
-                        label = { Text("Creator Name (optional)") },
+                        label = { Text("Creator Name") },
                         placeholder = { Text("e.g., Selam Studio") },
                         singleLine = true,
                         modifier = Modifier
@@ -300,7 +288,7 @@ fun OnboardingScreen(
                     OutlinedTextField(
                         value = handle,
                         onValueChange = { handle = it },
-                        label = { Text("Handle (optional)") },
+                        label = { Text("Handle") },
                         placeholder = { Text("e.g., selam.live") },
                         singleLine = true,
                         modifier = Modifier
@@ -310,7 +298,7 @@ fun OnboardingScreen(
                     OutlinedTextField(
                         value = bio,
                         onValueChange = { bio = it },
-                        label = { Text("Stream Vibe / Bio (optional)") },
+                        label = { Text("Stream Vibe / Bio") },
                         placeholder = { Text("Late night chats, gaming & music") },
                         maxLines = 2,
                         modifier = Modifier.fillMaxWidth()
