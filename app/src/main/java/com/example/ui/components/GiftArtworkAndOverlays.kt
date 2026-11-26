@@ -272,7 +272,12 @@ fun SmallGiftBanner(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    ViewerAvatar(initials = evt.initials, seed = evt.avatarSeed, size = 28.dp)
+                    ViewerAvatar(
+                        initials = evt.initials,
+                        seed = evt.avatarSeed,
+                        hasProfilePicture = evt.hasProfilePicture,
+                        size = 28.dp
+                    )
                     Column {
                         Text(
                             text = evt.username,

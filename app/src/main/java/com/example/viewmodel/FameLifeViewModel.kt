@@ -67,6 +67,13 @@ sealed interface AiStatus {
     data class Degraded(val reason: String) : AiStatus
 }
 
+data class StudioNotification(
+    val id: String,
+    val title: String,
+    val message: String,
+    val timestampMs: Long = System.currentTimeMillis()
+)
+
 data class LiveSessionUiState(
     val isLive: Boolean = false,
     val isPaused: Boolean = false,
@@ -143,6 +150,9 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
     private val _preLiveSource = MutableStateFlow(StreamSourceMode.FRONT_CAMERA)
     val preLiveSource: StateFlow<StreamSourceMode> = _preLiveSource.asStateFlow()
 
+    private val _studioNotifications = MutableStateFlow<List<StudioNotification>>(emptyList())
+    val studioNotifications: StateFlow<List<StudioNotification>> = _studioNotifications.asStateFlow()
+
     private var audienceEngine: StochasticAudienceEngine? = null
     private var economyEngine: VirtualEconomyEngine? = null
     private var simulationJob: Job? = null
@@ -168,10 +178,48 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun completeOnboarding(displayName: String, handle: String, bio: String, isGuest: Boolean) {
+    fun completeOnboarding(
+        displayName: String,
+        handle: String,
+        bio: String,
+        isGuest: Boolean,
+        avatarUri: String? = null
+    ) {
         viewModelScope.launch {
-            repository.saveCreatorProfile(displayName, handle, bio, isGuest)
+            repository.saveCreatorProfile(displayName, handle, bio, isGuest, avatarUri)
             settingsStore.updateSettings { it.copy(onboardingCompleted = true) }
+        }
+    }
+
+    fun updateCreatorProfile(
+        displayName: String,
+        handle: String,
+        bio: String,
+        avatarUri: String?
+    ) {
+        viewModelScope.launch {
+            repository.updateProfileDetails(
+                existing = creatorProfile.value,
+                displayName = displayName,
+                handle = handle,
+                bio = bio,
+                avatarUri = avatarUri
+            )
+        }
+    }
+
+    fun dismissNotification(id: String) {
+        _studioNotifications.update { list -> list.filterNot { it.id == id } }
+    }
+
+    fun clearAllNotifications() {
+        _studioNotifications.value = emptyList()
+    }
+
+    private fun pushStudioNotification(title: String, message: String) {
+        _studioNotifications.update { current ->
+            if (current.any { it.title == title && it.message == message }) current
+            else (listOf(StudioNotification(UUID.randomUUID().toString(), title, message)) + current).take(12)
         }
     }
 
@@ -279,7 +327,7 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
                 visualUnderstandingEnabled = currentSettings.visualUnderstandingEnabled,
                 currentViewers = returningCore,
                 peakViewers = returningCore,
-                aiStatus = if (isOnline()) AiStatus.Ready else AiStatus.Degraded("Offline mode: AI speech understanding paused")
+                aiStatus = AiStatus.Ready
             )
 
             if (hasMicPermission) {
@@ -510,8 +558,12 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
                     scheduleDirectedReactions(result.reactions, speakers, ctx.contextId)
                 }
                 is DirectorResult.Degraded -> {
+                    // Never show live error banners; log quietly to main-menu notifications if needed
+                    if (result.reason.isNotBlank() && !result.reason.contains("Waiting for audience", ignoreCase = true)) {
+                        pushStudioNotification("Audience Engine Notice", result.reason)
+                    }
                     _liveState.update {
-                        it.copy(aiStatus = AiStatus.Degraded(result.reason))
+                        it.copy(aiStatus = AiStatus.Ready)
                     }
                     scheduleDirectedReactions(result.ambientReactions, speakers, ctx.contextId)
                 }
@@ -559,7 +611,8 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
                             avatarSeed = speaker.avatarSeed,
                             gift = gift,
                             count = 1,
-                            timestampMs = System.currentTimeMillis()
+                            timestampMs = System.currentTimeMillis(),
+                            hasProfilePicture = speaker.hasProfilePicture
                         )
                         if (econ.recordGiftEvent(giftEvt)) {
                             handleNewGiftEvent(giftEvt, speakers)
@@ -609,7 +662,8 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
             text = msgText,
             contextId = activeContextId,
             giftId = event.gift.id,
-            virtualCoins = event.totalVirtualCoins
+            virtualCoins = event.totalVirtualCoins,
+            hasProfilePicture = event.hasProfilePicture
         )
 
         populationEngine.recordParticipation(event.viewerId)
@@ -663,7 +717,8 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
             type = type,
             text = text,
             contextId = contextId,
-            isReturningFan = isReturningFan
+            isReturningFan = isReturningFan,
+            hasProfilePicture = viewer.hasProfilePicture
         )
         _liveState.update { state ->
             state.copy(
@@ -879,6 +934,12 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
                 },
                 onStateChanged = { st ->
                     _liveState.update { it.copy(speechState = st) }
+                    if (st == SpeechEngineState.UNAVAILABLE) {
+                        pushStudioNotification(
+                            title = "Voice Input Notice",
+                            message = "On-device speech recognition was unavailable during your live stream. Typed prompts and quick phrases work anytime."
+                        )
+                    }
                 }
             )
         }

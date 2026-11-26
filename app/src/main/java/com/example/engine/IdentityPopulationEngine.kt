@@ -31,20 +31,58 @@ class IdentityPopulationEngine(
     private val distinctParticipantIds = HashSet<String>(4096)
     private var uniqueMessageEvents = 0L
 
-    private val prefixes = arrayOf(
-        "abyssinia", "addis", "luna", "ghost", "mimi", "daniel", "sarah", "king", "natalie", "selam",
-        "dawit", "bereket", "tigist", "hana", "yonas", "pixel", "nova", "echo", "vibe", "turbo",
-        "coffee", "buna", "zack", "leila", "kofi", "amara", "tarik", "sol", "maya", "rebel",
-        "zen", "neon", "midnight", "cloud", "rift", "kairo", "eden", "samir", "nina", "lucas",
-        "meron", "abebe", "fiker", "robel", "mahlet", "elena", "omar", "tariq", "juno", "rex",
-        "sky", "frost", "blaze", "pulse", "orbit", "delta", "sage", "ivy", "milo", "chloe"
+    private val firstNames = arrayOf(
+        "daniel", "sarah", "hana", "dawit", "mimi", "yonas", "tigist", "bereket", "meron", "robel",
+        "mahlet", "selam", "abebe", "elena", "omar", "tariq", "amara", "kofi", "leila", "zack",
+        "maya", "lucas", "nina", "chloe", "noah", "liam", "sofia", "mateo", "aisha", "fatima",
+        "kwame", "chidi", "tunde", "nadia", "yusuf", "samira", "jordan", "taylor", "alex", "camila",
+        "diego", "kenji", "yuki", "sora", "minho", "priya", "arjun", "zara", "noel", "elias",
+        "sara", "betty", "helen", "rahel", "eyob", "natnael", "lidya", "samuel", "nathan", "kaleb",
+        "rediet", "bezawit", "biniyam", "mussie", "henok", "kalkidan", "mekdes", "tsion", "feven", "solomon",
+        "nebiyat", "semira", "yohannes", "kidist", "temesgen", "michael", "david", "rachel", "hannah", "emma",
+        "olivia", "ethan", "mason", "logan", "jayden", "caleb", "marcus", "trevor", "kevin", "brandon",
+        "justin", "tyler", "brianna", "jasmine", "vanessa", "natalie", "claire", "audrey", "grace", "lily",
+        "victoria", "sophie", "amir", "karim", "hassan", "layla", "yasmin", "ali", "farah", "diana",
+        "valerie", "carlos", "luis", "andrea", "paula", "marco", "luca", "giulia", "chiara", "leo",
+        "oscar", "felix", "hugo", "clara", "alice", "iris", "ruby", "jade", "ava", "mila",
+        "zoe", "aria", "ezra", "theo", "kai", "adrian", "gabriel", "isaac", "julian", "sienna"
     )
 
-    private val suffixes = arrayOf(
-        "live", "x", "99", "tv", "plays", "official", "vibes", "hub", "gg", "studio",
-        "irl", "251", "addis", "wave", "fam", "07", "24", "pro", "zone", "fx",
-        "dev", "art", "music", "chill", "night", "cam", "cast", "star", "core", "hq",
-        "clips", "daily", "watch", "room", "crew", "club", "line", "beam", "spark", "loop"
+    private val handleTokens = arrayOf(
+        "m", "k", "t", "b", "s", "a", "d", "j", "r", "g",
+        "live", "tv", "irl", "gg", "vibes", "daily", "creates", "music", "plays", "world",
+        "studio", "xo", "official", "99", "01", "02", "03", "04", "05", "07",
+        "98", "97", "24", "251", "addis", "habesha", "london", "nyc", "la", "toronto",
+        "atl", "dubai", "tokyo", "paris", "berlin", "reads", "cooks", "draws", "fits", "lifts",
+        "beats", "cam", "films", "travels", "notes", "edits", "chill", "flow", "wave", "spark",
+        "mint", "glow", "hype", "zone", "hub", "club", "crew", "clan", "fam", "room",
+        "den", "nest", "loop", "byte", "code", "dev", "tech", "pixel", "frame", "reel",
+        "clips", "watch", "stream", "cast", "fm", "radio", "cafe", "buna", "latte", "tea",
+        "roast", "star", "moon", "sun", "sky", "rain", "ocean", "coast", "hill", "peak",
+        "view", "core", "style", "aura", "mode", "flex", "real", "true", "pure", "ace",
+        "pro", "hq", "art", "vlog", "snap", "chat", "talk", "now", "here", "one",
+        "x", "xx", "jr", "sr", "ii"
+    )
+
+    private val handlePrefixes = arrayOf(
+        "its", "hey", "im", "real", "the", "not", "only", "just", "lil", "big",
+        "young", "sunny", "night", "late", "cozy", "golden", "velvet", "silver", "cosmic", "urban",
+        "chill", "happy", "lucky", "wild", "quiet", "soft", "fresh", "retro", "cyber", "pixel",
+        "neon", "coffee", "midnight", "morning", "sunday", "friday", "summer", "winter", "addis", "buna",
+        "abyssinia", "blue", "green", "red", "tiny", "super", "ultra", "turbo", "smooth", "sharp",
+        "brave", "clever", "calm", "kind", "swift", "sweet", "bold", "bright", "clear", "vivid",
+        "deep", "cool", "warm", "true", "pure", "dj", "mc", "mr", "ms", "dr"
+    )
+
+    private val handleNouns = arrayOf(
+        "fox", "wolf", "lion", "bear", "tiger", "hawk", "eagle", "owl", "cat", "panda",
+        "koala", "lynx", "raven", "swan", "dove", "star", "moon", "comet", "orbit", "nova",
+        "nebula", "aurora", "cloud", "storm", "breeze", "river", "ocean", "wave", "canyon", "forest",
+        "cedar", "palm", "rose", "lotus", "sage", "mint", "ember", "flame", "spark", "prism",
+        "echo", "pulse", "beat", "chord", "lyric", "melody", "tempo", "vinyl", "sketch", "canvas",
+        "lens", "shutter", "focus", "frame", "pixel", "atlas", "compass", "voyager", "nomad", "ranger",
+        "knight", "pilot", "gamer", "coder", "maker", "chef", "baker", "barista", "drifter", "dreamer",
+        "wanderer", "thinker", "seeker", "runner", "rider", "skater", "vibe", "sparkle", "horizon", "crest"
     )
 
     private val interests = arrayOf(
@@ -63,6 +101,56 @@ class IdentityPopulationEngine(
         uniqueMessageEvents = 0L
     }
 
+    private fun generateRealisticUsername(safeIdx: Int, h1: Long, h2: Long): String {
+        val patternABase = firstNames.size * handleTokens.size          // 140 * 125 = 17,500
+        val patternBBase = handlePrefixes.size * firstNames.size        // 70 * 140 = 9,800
+        val patternCBase = handlePrefixes.size * handleNouns.size       // 70 * 80 = 5,600
+        val totalNaturalCombos = patternABase + patternBBase + patternCBase // 32,900 unique natural handles
+
+        // Permute low indices bijectively (gcd(11003, 32900) == 1) so first 32,900 handles are 100% distinct & natural
+        val slot = if (safeIdx < totalNaturalCombos) {
+            ((safeIdx.toLong() * 11003L) % totalNaturalCombos.toLong()).toInt().let {
+                if (it < 0) it + totalNaturalCombos else it
+            }
+        } else {
+            safeIdx
+        }
+
+        val sep = when ((h2 ushr 20 and 3L).toInt()) {
+            0 -> "_"
+            1 -> "."
+            2 -> ""
+            else -> "_"
+        }
+
+        return when {
+            slot < patternABase -> {
+                val f = slot / handleTokens.size
+                val t = slot % handleTokens.size
+                "${firstNames[f]}$sep${handleTokens[t]}"
+            }
+            slot < patternABase + patternBBase -> {
+                val rem = slot - patternABase
+                val p = rem / firstNames.size
+                val f = rem % firstNames.size
+                "${handlePrefixes[p]}$sep${firstNames[f]}"
+            }
+            slot < totalNaturalCombos -> {
+                val rem = slot - patternABase - patternBBase
+                val p = rem / handleNouns.size
+                val n = rem % handleNouns.size
+                "${handlePrefixes[p]}$sep${handleNouns[n]}"
+            }
+            else -> {
+                val rem = slot - totalNaturalCombos
+                val f = ((h1 ushr 16) % firstNames.size).toInt().let { if (it < 0) it + firstNames.size else it }
+                val t = ((h1 ushr 32) % handleTokens.size).toInt().let { if (it < 0) it + handleTokens.size else it }
+                val num = 10 + ((rem * 37 + ((h2 ushr 8) % 89).toInt().let { if (it < 0) it + 89 else it }) % 890)
+                "${firstNames[f]}$sep${handleTokens[t]}$num"
+            }
+        }
+    }
+
     fun getViewerByIndex(index: Int, memoryEnabled: Boolean): ViewerIdentity {
         val safeIdx = ((index % populationSize) + populationSize) % populationSize
         val viewerId = formatViewerId(safeIdx)
@@ -72,26 +160,14 @@ class IdentityPopulationEngine(
         val h2 = splitMix64(h1 xor 0xBF58476D1CE4E5B9UL.toLong())
         val h3 = splitMix64(h2 xor 0x94D049BB133111EBUL.toLong())
 
-        val pIdx = ((h1 ushr 16) % prefixes.size).toInt().let { if (it < 0) it + prefixes.size else it }
-        val sIdx = ((h1 ushr 32) % suffixes.size).toInt().let { if (it < 0) it + suffixes.size else it }
-        val disc = (safeIdx / (prefixes.size * suffixes.size))
-        val tagNum = ((h2 ushr 8) % 97).toInt().let { if (it < 0) it + 97 else it }
-
-        val separator = when ((h2 ushr 20 and 3L).toInt()) {
-            0 -> "_"
-            1 -> "."
-            2 -> ""
-            else -> "_"
-        }
-        val generatedUsername = if (disc == 0) {
-            "${prefixes[pIdx]}$separator${suffixes[sIdx]}"
-        } else {
-            "${prefixes[pIdx]}$separator${suffixes[sIdx]}${disc}$tagNum"
-        }
-
+        val generatedUsername = generateRealisticUsername(safeIdx, h1, h2)
         val username = mem?.username ?: generatedUsername
         val initials = username.filter { it.isLetterOrDigit() }.take(2).uppercase().ifEmpty { "FL" }
         val avatarSeed = (h3 and 0x7FFFFFFFL).toInt()
+
+        // 90% probability of having a profile picture, 10% no profile picture
+        val avatarProbRoll = ((h3 ushr 40) % 100L).toInt().let { if (it < 0) it + 100 else it }
+        val hasProfilePicture = avatarProbRoll < 90
 
         val langRoll = ((h2 ushr 24) and 0xFFL).toInt()
         val language = when {
@@ -147,7 +223,8 @@ class IdentityPopulationEngine(
             generosity = generosity,
             joinCount = mem?.joinCount ?: 1,
             rememberedTopic = mem?.lastTopic,
-            totalGiftedCoins = mem?.totalGiftsCoins ?: 0
+            totalGiftedCoins = mem?.totalGiftsCoins ?: 0,
+            hasProfilePicture = hasProfilePicture
         )
     }
 

@@ -7,11 +7,6 @@ import com.example.domain.model.AudienceTone
 import com.example.domain.model.ChatEventType
 import com.example.domain.model.LivePlatformMode
 import com.example.domain.model.ViewerIdentity
-import com.google.firebase.Firebase
-import com.google.firebase.ai.ai
-import com.google.firebase.ai.type.Schema
-import com.google.firebase.ai.type.content
-import com.google.firebase.ai.type.generationConfig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
@@ -63,63 +58,8 @@ interface AudienceAiClient {
     suspend fun generateBatchJson(prompt: String, frameBitmap: Bitmap?): String
 }
 
-class FirebaseGeminiAiClient : AudienceAiClient {
-    private val responseSchema = Schema.obj(
-        properties = mapOf(
-            "reactions" to Schema.array(
-                items = Schema.obj(
-                    properties = mapOf(
-                        "viewerSlot" to Schema.integer(description = "0-based index of the speaker from the provided audience list"),
-                        "type" to Schema.enumeration(
-                            values = listOf("chat", "question", "reaction", "donor_reply", "join", "follow"),
-                            description = "Event type"
-                        ),
-                        "text" to Schema.string(description = "Short natural livestream comment (1-18 words)"),
-                        "delayMs" to Schema.integer(description = "Human-like arrival delay in milliseconds (350-4200)"),
-                        "contextId" to Schema.string(description = "Exact contextId from the request"),
-                        "optionalGiftId" to Schema.string(
-                            description = "Optional gift id (flower, heart, coffee, fireworks, galaxy, crown, lion_mascot) or null",
-                            nullable = true
-                        )
-                    ),
-                    optionalProperties = listOf("optionalGiftId")
-                ),
-                description = "Batch of 4 to 7 realistic audience reactions"
-            )
-        )
-    )
-
-    private val model by lazy {
-        Firebase.ai.generativeModel(
-            modelName = "gemini-3.8-flash",
-            generationConfig = generationConfig {
-                responseMimeType = "application/json"
-                responseSchema = responseSchema
-                temperature = 0.85f
-                maxOutputTokens = 700
-            }
-        )
-    }
-
-    override suspend fun generateBatchJson(prompt: String, frameBitmap: Bitmap?): String {
-        val response = withTimeout(30_000L) {
-            if (frameBitmap != null) {
-                model.generateContent(
-                    content {
-                        image(frameBitmap)
-                        text(prompt)
-                    }
-                )
-            } else {
-                model.generateContent(prompt)
-            }
-        }
-        return response.text ?: throw IllegalStateException("Gemini returned an empty response.")
-    }
-}
-
 class AudienceDirector(
-    private val aiClient: AudienceAiClient = FirebaseGeminiAiClient(),
+    private val aiClient: AudienceAiClient = LocalAlgorithmicDirectorClient(),
     private val random: Random = Random.Default
 ) {
     private val recentTexts = ArrayDeque<String>()
@@ -165,16 +105,32 @@ class AudienceDirector(
             )
         }
 
-        // 2. Offline guard: honestly report degraded mode & use non-speech-claiming ambient simulation
+        // 2. Local algorithmic NLP audience engine (no cloud quota limits, works offline & online)
+        if (aiClient is LocalAlgorithmicDirectorClient) {
+            val localReactions = aiClient.generateLocalReactions(
+                context = context,
+                speakers = speakers,
+                frameBitmap = frameBitmap,
+                recentTexts = recentTexts,
+                rememberText = ::rememberRecentText
+            )
+            return DirectorResult.Success(
+                reactions = localReactions,
+                latencyMs = (System.currentTimeMillis() - startMs).coerceAtLeast(18L),
+                source = "LOCAL_ENGINE"
+            )
+        }
+
+        // 3. Offline guard for external/custom AI clients
         if (!isOnline) {
             return DirectorResult.Degraded(
-                reason = "Offline mode: AI speech & vision understanding paused",
+                reason = "Offline mode: external audience service unavailable",
                 ambientReactions = buildAmbientFallback(context, speakers),
                 latencyMs = (System.currentTimeMillis() - startMs)
             )
         }
 
-        // 3. During silence, avoid unnecessary AI calls most of the time; emit sparse ambient greetings
+        // 4. During silence, emit sparse ambient greetings
         if (context.isSilent && context.creatorTranscript.isNullOrBlank() && frameBitmap == null) {
             return DirectorResult.Success(
                 reactions = buildAmbientFallback(context, speakers).take(2),
@@ -183,7 +139,7 @@ class AudienceDirector(
             )
         }
 
-        // 4. Context-aware Gemini Director call
+        // 5. External/injected AudienceAiClient call (e.g., tests)
         return try {
             apiRequestCount++
             val prompt = buildDirectorPrompt(context, speakers, hasImage = frameBitmap != null)
@@ -196,7 +152,7 @@ class AudienceDirector(
             val elapsed = System.currentTimeMillis() - startMs
             if (parsed.isEmpty()) {
                 DirectorResult.Degraded(
-                    reason = "AI returned no valid reactions for current context",
+                    reason = "Audience engine returned no reactions for current context",
                     ambientReactions = buildAmbientFallback(context, speakers).take(2),
                     latencyMs = elapsed
                 )
@@ -204,13 +160,13 @@ class AudienceDirector(
                 DirectorResult.Success(
                     reactions = parsed,
                     latencyMs = elapsed,
-                    source = "GEMINI_AI"
+                    source = "CUSTOM_CLIENT"
                 )
             }
         } catch (e: TimeoutCancellationException) {
             safeLogError("AudienceDirector timed out", e)
             DirectorResult.Degraded(
-                reason = "AI response timed out",
+                reason = "Audience response timed out",
                 ambientReactions = buildAmbientFallback(context, speakers).take(2),
                 latencyMs = System.currentTimeMillis() - startMs
             )
@@ -219,7 +175,7 @@ class AudienceDirector(
         } catch (e: Exception) {
             safeLogError("AudienceDirector failed", e)
             DirectorResult.Degraded(
-                reason = e.localizedMessage ?: "AI unavailable",
+                reason = e.localizedMessage ?: "Audience engine fallback active",
                 ambientReactions = buildAmbientFallback(context, speakers).take(2),
                 latencyMs = System.currentTimeMillis() - startMs
             )

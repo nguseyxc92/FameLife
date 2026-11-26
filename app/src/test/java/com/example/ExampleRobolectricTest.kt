@@ -41,7 +41,7 @@ class ExampleRobolectricTest {
         composeTestRule.setContent {
             FameLifeTheme {
                 OnboardingScreen(
-                    onComplete = { _, _, _, isGuest ->
+                    onComplete = { _, _, _, isGuest, _ ->
                         guestClicked = isGuest
                     }
                 )
@@ -55,7 +55,7 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `home dashboard renders platform modes and simulation badge`() {
+    fun `home dashboard renders platform modes, notifications, and simulation badge`() {
         var selectedMode: LivePlatformMode? = null
         composeTestRule.setContent {
             FameLifeTheme {
@@ -64,6 +64,13 @@ class ExampleRobolectricTest {
                     settings = UserSettings(),
                     walletCoins = 1250,
                     sessionsCount = 2,
+                    notifications = listOf(
+                        com.example.viewmodel.StudioNotification(
+                            id = "n1",
+                            title = "Voice Input Notice",
+                            message = "Shown in main menu only"
+                        )
+                    ),
                     onSelectPlatform = { selectedMode = it },
                     onSelectFamePreset = {},
                     onUpdateCustomFame = {},
@@ -76,6 +83,7 @@ class ExampleRobolectricTest {
         }
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("SIMULATED").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("main_menu_notification_card").assertIsDisplayed()
         composeTestRule.onNodeWithTag("platform_card_photo_live").performClick()
         composeTestRule.waitForIdle()
         assertEquals(LivePlatformMode.PHOTO_LIVE, selectedMode)

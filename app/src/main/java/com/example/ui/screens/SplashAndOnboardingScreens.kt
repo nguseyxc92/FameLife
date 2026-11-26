@@ -1,11 +1,15 @@
 package com.example.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,11 +21,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Shield
@@ -47,10 +53,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.data.ProfilePhotoStorage
+import com.example.ui.components.ViewerAvatar
 import com.example.ui.theme.FameMint
 import com.example.ui.theme.FameMintContainer
 import com.example.ui.theme.StudioObsidian
@@ -109,7 +118,7 @@ fun SplashScreen(
             )
             Spacer(Modifier.height(28.dp))
             Text(
-                text = "TEBIB LABS • PRIVATE AI SIMULATION",
+                text = "TEBIB LABS • LIVE SIMULATION",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextMuted
             )
@@ -146,11 +155,24 @@ fun FameLifeEmblem(modifier: Modifier = Modifier) {
 
 @Composable
 fun OnboardingScreen(
-    onComplete: (displayName: String, handle: String, bio: String, isGuest: Boolean) -> Unit
+    onComplete: (displayName: String, handle: String, bio: String, isGuest: Boolean, avatarUri: String?) -> Unit
 ) {
+    val context = LocalContext.current
     var displayName by remember { mutableStateOf("") }
     var handle by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
+    var avatarUri by remember { mutableStateOf<String?>(null) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            val saved = ProfilePhotoStorage.savePickedPhotoToInternalStorage(context, uri)
+            if (saved != null) {
+                avatarUri = saved
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -175,7 +197,7 @@ fun OnboardingScreen(
                 Column {
                     Text("Welcome to FameLife", style = MaterialTheme.typography.headlineMedium)
                     Text(
-                        "Private AI Livestream Simulator • Tebib Labs",
+                        "Private Livestream Simulator • Tebib Labs",
                         style = MaterialTheme.typography.bodyMedium,
                         color = FameMint
                     )
@@ -230,6 +252,41 @@ fun OnboardingScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary
                     )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ViewerAvatar(
+                            initials = displayName.ifBlank { "CR" }.take(2).uppercase(),
+                            seed = 17,
+                            size = 54.dp,
+                            hasHighlightRing = true,
+                            hasProfilePicture = !avatarUri.isNullOrBlank(),
+                            imageUri = avatarUri,
+                            modifier = Modifier.clickable {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, FameMint.copy(alpha = 0.5f)),
+                            modifier = Modifier.testTag("onboarding_pick_photo_btn")
+                        ) {
+                            Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = FameMint, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = if (avatarUri.isNullOrBlank()) "Add Profile Photo" else "Change Photo",
+                                color = FameMint
+                            )
+                        }
+                    }
                     OutlinedTextField(
                         value = displayName,
                         onValueChange = { displayName = it },
@@ -265,7 +322,7 @@ fun OnboardingScreen(
                 onClick = {
                     val name = displayName.ifBlank { "Creator" }
                     val h = handle.ifBlank { "famelife_creator" }
-                    onComplete(name, h, bio, false)
+                    onComplete(name, h, bio, false, avatarUri)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -277,7 +334,7 @@ fun OnboardingScreen(
             }
 
             OutlinedButton(
-                onClick = { onComplete("Guest Creator", "guest_live", "", true) },
+                onClick = { onComplete("Guest Creator", "guest_live", "", true, null) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)

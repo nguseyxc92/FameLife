@@ -106,6 +106,7 @@ fun FameLifeAppRoot(
     val liveState by vm.liveState.collectAsStateWithLifecycle()
     val lastCompleted by vm.lastCompletedSession.collectAsStateWithLifecycle()
     val preLiveSource by vm.preLiveSource.collectAsStateWithLifecycle()
+    val studioNotifications by vm.studioNotifications.collectAsStateWithLifecycle()
 
     var currentScreen by rememberSaveable { mutableStateOf(AppScreen.SPLASH) }
     var currentTab by rememberSaveable { mutableStateOf(DashboardTab.STUDIO) }
@@ -125,8 +126,8 @@ fun FameLifeAppRoot(
 
         AppScreen.ONBOARDING -> {
             OnboardingScreen(
-                onComplete = { name, handle, bio, isGuest ->
-                    vm.completeOnboarding(name, handle, bio, isGuest)
+                onComplete = { name, handle, bio, isGuest, avatarUri ->
+                    vm.completeOnboarding(name, handle, bio, isGuest, avatarUri)
                     currentScreen = AppScreen.DASHBOARD
                 }
             )
@@ -185,6 +186,7 @@ fun FameLifeAppRoot(
                                     ledgerEntries = ledgerEntries,
                                     walletCoins = walletCoins,
                                     returningFans = returningFans,
+                                    notifications = studioNotifications,
                                     onOpenPreLive = { currentScreen = AppScreen.PRE_LIVE },
                                     onSelectTab = { currentTab = it },
                                     onResetDone = { currentScreen = AppScreen.ONBOARDING }
@@ -231,6 +233,7 @@ fun FameLifeAppRoot(
                                 ledgerEntries = ledgerEntries,
                                 walletCoins = walletCoins,
                                 returningFans = returningFans,
+                                notifications = studioNotifications,
                                 onOpenPreLive = { currentScreen = AppScreen.PRE_LIVE },
                                 onSelectTab = { currentTab = it },
                                 onResetDone = { currentScreen = AppScreen.ONBOARDING }
@@ -310,6 +313,7 @@ private fun DashboardTabContent(
     ledgerEntries: List<com.example.data.LedgerEntryEntity>,
     walletCoins: Int,
     returningFans: List<com.example.data.ReturningFanEntity>,
+    notifications: List<com.example.viewmodel.StudioNotification>,
     onOpenPreLive: () -> Unit,
     onSelectTab: (DashboardTab) -> Unit,
     onResetDone: () -> Unit
@@ -321,6 +325,10 @@ private fun DashboardTabContent(
                 settings = settings,
                 walletCoins = walletCoins,
                 sessionsCount = sessions.size,
+                notifications = notifications,
+                onDismissNotification = vm::dismissNotification,
+                onClearNotifications = vm::clearAllNotifications,
+                onUpdateProfile = vm::updateCreatorProfile,
                 onSelectPlatform = vm::selectPlatform,
                 onSelectFamePreset = vm::selectFamePreset,
                 onUpdateCustomFame = vm::updateCustomFame,
@@ -354,6 +362,8 @@ private fun DashboardTabContent(
         DashboardTab.SETTINGS -> {
             SettingsScreen(
                 settings = settings,
+                profile = profile,
+                onUpdateProfile = vm::updateCreatorProfile,
                 onLanguageChange = vm::updateLanguage,
                 onToneChange = vm::updateTone,
                 onChatSpeedChange = vm::updateChatSpeed,

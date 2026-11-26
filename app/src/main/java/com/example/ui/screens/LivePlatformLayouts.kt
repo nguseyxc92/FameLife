@@ -103,6 +103,7 @@ import com.example.viewmodel.LiveSessionUiState
 fun PhotoLiveOverlay(
     state: LiveSessionUiState,
     creatorHandle: String,
+    creatorAvatarUri: String? = null,
     reducedMotion: Boolean,
     draftMessage: String,
     onDraftChange: (String) -> Unit,
@@ -153,7 +154,12 @@ fun PhotoLiveOverlay(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        ViewerAvatar(initials = creatorHandle.take(2).uppercase(), seed = 9, size = 34.dp)
+                        ViewerAvatar(
+                            initials = creatorHandle.take(2).uppercase(),
+                            seed = 9,
+                            size = 34.dp,
+                            imageUri = creatorAvatarUri
+                        )
                         Column {
                             Text(
                                 text = creatorHandle,
@@ -244,7 +250,12 @@ fun PhotoLiveOverlay(
                                     verticalAlignment = Alignment.Top,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    ViewerAvatar(initials = msg.initials, seed = msg.avatarSeed, size = 26.dp)
+                                    ViewerAvatar(
+                                        initials = msg.initials,
+                                        seed = msg.avatarSeed,
+                                        hasProfilePicture = msg.hasProfilePicture,
+                                        size = 26.dp
+                                    )
                                     Column {
                                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                                             Text(
@@ -340,6 +351,7 @@ fun PhotoLiveOverlay(
 fun ShortLiveOverlay(
     state: LiveSessionUiState,
     creatorName: String,
+    creatorAvatarUri: String? = null,
     draftMessage: String,
     onDraftChange: (String) -> Unit,
     onSendUtterance: () -> Unit,
@@ -391,7 +403,13 @@ fun ShortLiveOverlay(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            ViewerAvatar(initials = creatorName.take(2).uppercase(), seed = 5, size = 32.dp, hasHighlightRing = true)
+                            ViewerAvatar(
+                                initials = creatorName.take(2).uppercase(),
+                                seed = 5,
+                                size = 32.dp,
+                                hasHighlightRing = true,
+                                imageUri = creatorAvatarUri
+                            )
                             Column {
                                 Text(creatorName, style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 1)
                                 Text(
@@ -412,6 +430,7 @@ fun ShortLiveOverlay(
                             ViewerAvatar(
                                 initials = sup.initials,
                                 seed = sup.avatarSeed,
+                                hasProfilePicture = sup.hasProfilePicture,
                                 size = 26.dp,
                                 modifier = Modifier.clickable { onOpenSupporters() }
                             )
@@ -470,6 +489,12 @@ fun ShortLiveOverlay(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
+                                    ViewerAvatar(
+                                        initials = msg.initials,
+                                        seed = msg.avatarSeed,
+                                        hasProfilePicture = msg.hasProfilePicture,
+                                        size = 22.dp
+                                    )
                                     msg.archetype.badgeLabel?.let { b ->
                                         Surface(
                                             shape = RoundedCornerShape(4.dp),
@@ -713,7 +738,12 @@ private fun VideoChatPanel(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                ViewerAvatar(initials = sc.initials, seed = sc.avatarSeed, size = 20.dp)
+                                ViewerAvatar(
+                                    initials = sc.initials,
+                                    seed = sc.avatarSeed,
+                                    hasProfilePicture = sc.hasProfilePicture,
+                                    size = 20.dp
+                                )
                                 Text(
                                     text = "${sc.virtualCoins} coins",
                                     style = MaterialTheme.typography.labelSmall,
@@ -770,7 +800,12 @@ private fun VideoChatPanel(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        ViewerAvatar(initials = msg.initials, seed = msg.avatarSeed, size = 26.dp)
+                        ViewerAvatar(
+                            initials = msg.initials,
+                            seed = msg.avatarSeed,
+                            hasProfilePicture = msg.hasProfilePicture,
+                            size = 26.dp
+                        )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = buildAnnotatedString {
@@ -1026,6 +1061,12 @@ private fun GamingChatColumn(
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    ViewerAvatar(
+                        initials = msg.initials,
+                        seed = msg.avatarSeed,
+                        hasProfilePicture = msg.hasProfilePicture,
+                        size = 20.dp
+                    )
                     val badgeColor = when (msg.archetype) {
                         ViewerArchetype.MODERATOR -> GamingLiveEmerald
                         ViewerArchetype.SUPPORTER -> GamingLiveViolet

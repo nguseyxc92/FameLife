@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.ScreenShare
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -87,7 +86,6 @@ import com.example.ui.theme.StudioSurfaceVariant
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.VideoLiveGold
-import com.example.viewmodel.AiStatus
 import com.example.viewmodel.LiveSessionUiState
 import androidx.compose.runtime.collectAsState
 
@@ -185,6 +183,7 @@ fun LiveRoomScreen(
                 PhotoLiveOverlay(
                     state = state,
                     creatorHandle = profile?.handle ?: "creator_live",
+                    creatorAvatarUri = profile?.avatarUri,
                     reducedMotion = settings.reducedMotion,
                     draftMessage = draftMessage,
                     onDraftChange = { draftMessage = it },
@@ -203,6 +202,7 @@ fun LiveRoomScreen(
                 ShortLiveOverlay(
                     state = state,
                     creatorName = profile?.displayName ?: "Creator",
+                    creatorAvatarUri = profile?.avatarUri,
                     draftMessage = draftMessage,
                     onDraftChange = { draftMessage = it },
                     onSendUtterance = sendUtteranceAction,
@@ -244,31 +244,6 @@ fun LiveRoomScreen(
                     onRequestEnd = { showEndDialog = true },
                     videoStageContent = stageContent
                 )
-            }
-        }
-
-        // Honest degraded mode or reminder toast strip
-        if (state.aiStatus is AiStatus.Degraded) {
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 84.dp, start = 16.dp, end = 16.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = StudioObsidian.copy(alpha = 0.9f),
-                border = BorderStroke(1.dp, AlertAmber)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(Icons.Default.WarningAmber, contentDescription = null, tint = AlertAmber, modifier = Modifier.size(16.dp))
-                    Text(
-                        text = "${state.aiStatus.reason} (Ambient chat only)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = AlertAmber
-                    )
-                }
             }
         }
 
@@ -397,7 +372,7 @@ fun LiveRoomScreen(
                     )
                     StudioControlButton(
                         icon = Icons.Default.Visibility,
-                        label = if (state.visualUnderstandingEnabled) "Vision On" else "Vision Off",
+                        label = if (state.visualUnderstandingEnabled) "Scene On" else "Scene Off",
                         active = state.visualUnderstandingEnabled,
                         onClick = { onToggleVisualAi(!state.visualUnderstandingEnabled) },
                         modifier = Modifier.weight(1f)
@@ -439,7 +414,12 @@ fun LiveRoomScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text("#${idx + 1}", style = MaterialTheme.typography.titleMedium, color = VideoLiveGold)
-                                ViewerAvatar(initials = sup.initials, seed = sup.avatarSeed, size = 32.dp)
+                                ViewerAvatar(
+                                    initials = sup.initials,
+                                    seed = sup.avatarSeed,
+                                    hasProfilePicture = sup.hasProfilePicture,
+                                    size = 32.dp
+                                )
                                 Text(sup.username, style = MaterialTheme.typography.labelLarge)
                             }
                             Text("${sup.totalCoins} coins", style = MaterialTheme.typography.labelMedium, color = FameMint)

@@ -22,32 +22,38 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideoCameraFront
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -55,6 +61,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.CreatorProfileEntity
 import com.example.data.UserSettings
+import com.example.ui.components.EditCreatorAccountDialog
+import com.example.viewmodel.StudioNotification
 import com.example.domain.model.AudienceLanguage
 import com.example.domain.model.AudienceTone
 import com.example.domain.model.CustomFameConfig
@@ -85,6 +93,10 @@ fun HomeDashboardScreen(
     settings: UserSettings,
     walletCoins: Int,
     sessionsCount: Int,
+    notifications: List<StudioNotification> = emptyList(),
+    onDismissNotification: (String) -> Unit = {},
+    onClearNotifications: () -> Unit = {},
+    onUpdateProfile: (displayName: String, handle: String, bio: String, avatarUri: String?) -> Unit = { _, _, _, _ -> },
     onSelectPlatform: (LivePlatformMode) -> Unit,
     onSelectFamePreset: (FamePreset) -> Unit,
     onUpdateCustomFame: (CustomFameConfig) -> Unit,
@@ -94,6 +106,9 @@ fun HomeDashboardScreen(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showAccountDialog by remember { mutableStateOf(false) }
+    var showNotificationsDialog by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -112,8 +127,48 @@ fun HomeDashboardScreen(
                     profile = profile,
                     walletCoins = walletCoins,
                     sessionsCount = sessionsCount,
-                    onOpenSettings = onOpenSettings
+                    unreadNotificationCount = notifications.size,
+                    onEditAccount = { showAccountDialog = true },
+                    onOpenNotifications = { showNotificationsDialog = true }
                 )
+            }
+
+            if (notifications.isNotEmpty()) {
+                item {
+                    val latest = notifications.first()
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = StudioSurface,
+                        border = BorderStroke(1.dp, FameMint.copy(alpha = 0.45f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showNotificationsDialog = true }
+                            .testTag("main_menu_notification_card")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Studio notification",
+                                tint = FameMint,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(latest.title, style = MaterialTheme.typography.labelLarge, color = FameMint)
+                                Text(latest.message, style = MaterialTheme.typography.bodyMedium, color = TextSecondary, maxLines = 2)
+                            }
+                            IconButton(
+                                onClick = { onDismissNotification(latest.id) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Dismiss notification", tint = TextMuted, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
             }
 
             item {
@@ -172,7 +227,7 @@ fun HomeDashboardScreen(
             item {
                 SectionHeader(
                     title = "3. Audience Language & Vibe",
-                    subtitle = "100,000+ virtual identities • AI audience director"
+                    subtitle = "100,000+ virtual identities • Smart audience engine"
                 )
                 Spacer(Modifier.height(10.dp))
                 Surface(
@@ -248,6 +303,69 @@ fun HomeDashboardScreen(
             }
         }
     }
+
+    if (showAccountDialog) {
+        EditCreatorAccountDialog(
+            profile = profile,
+            onDismiss = { showAccountDialog = false },
+            onSave = onUpdateProfile
+        )
+    }
+
+    if (showNotificationsDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotificationsDialog = false },
+            containerColor = StudioSurface,
+            title = { Text("Studio Notifications") },
+            text = {
+                if (notifications.isEmpty()) {
+                    Text("You're all caught up — no notices right now.", color = TextSecondary)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        notifications.forEach { note ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = StudioSurfaceVariant,
+                                border = BorderStroke(1.dp, StudioOutline)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(10.dp),
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(note.title, style = MaterialTheme.typography.labelLarge, color = FameMint)
+                                        Text(note.message, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                                    }
+                                    IconButton(
+                                        onClick = { onDismissNotification(note.id) },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = TextMuted, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showNotificationsDialog = false }) {
+                    Text("Close", color = FameMint)
+                }
+            },
+            dismissButton = if (notifications.isNotEmpty()) {
+                {
+                    TextButton(onClick = {
+                        onClearNotifications()
+                        showNotificationsDialog = false
+                    }) {
+                        Text("Clear All", color = TextSecondary)
+                    }
+                }
+            } else null
+        )
+    }
 }
 
 @Composable
@@ -255,7 +373,9 @@ private fun CreatorStudioHeader(
     profile: CreatorProfileEntity?,
     walletCoins: Int,
     sessionsCount: Int,
-    onOpenSettings: () -> Unit
+    unreadNotificationCount: Int,
+    onEditAccount: () -> Unit,
+    onOpenNotifications: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(22.dp),
@@ -270,19 +390,34 @@ private fun CreatorStudioHeader(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable(onClick = onEditAccount)
+                        .testTag("header_account_row")
                 ) {
                     ViewerAvatar(
                         initials = (profile?.displayName ?: "CR").take(2).uppercase(),
                         seed = 17,
-                        size = 46.dp,
-                        hasHighlightRing = true
+                        size = 48.dp,
+                        hasHighlightRing = true,
+                        hasProfilePicture = !profile?.avatarUri.isNullOrBlank(),
+                        imageUri = profile?.avatarUri
                     )
                     Column {
-                        Text(
-                            text = profile?.displayName ?: "Creator Studio",
-                            style = MaterialTheme.typography.titleLarge
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(
+                                text = profile?.displayName ?: "Creator Studio",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Account",
+                                tint = FameMint,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
                         Text(
                             text = "@${profile?.handle ?: "guest_live"}" + if (profile?.isGuest == true) " • Guest" else "",
                             style = MaterialTheme.typography.bodyMedium,
@@ -290,7 +425,34 @@ private fun CreatorStudioHeader(
                         )
                     }
                 }
-                SimulationWatermarkPill(compact = true)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box {
+                        IconButton(
+                            onClick = onOpenNotifications,
+                            modifier = Modifier.size(38.dp).testTag("notifications_bell_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Notifications",
+                                tint = if (unreadNotificationCount > 0) FameMint else TextSecondary
+                            )
+                        }
+                        if (unreadNotificationCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 6.dp, end = 6.dp)
+                                    .size(9.dp)
+                                    .clip(CircleShape)
+                                    .background(FameMint)
+                            )
+                        }
+                    }
+                    SimulationWatermarkPill(compact = true)
+                }
             }
 
             Spacer(Modifier.height(14.dp))

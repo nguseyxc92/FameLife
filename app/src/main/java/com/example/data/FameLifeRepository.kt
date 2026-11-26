@@ -15,7 +15,13 @@ class FameLifeRepository(private val db: FameLifeDatabase) {
     val totalVirtualCoins: Flow<Int> = db.ledgerDao().observeTotalCoins()
     val returningFans: Flow<List<ReturningFanEntity>> = db.returningFanDao().observeTopFans()
 
-    suspend fun saveCreatorProfile(displayName: String, handle: String, bio: String, isGuest: Boolean) {
+    suspend fun saveCreatorProfile(
+        displayName: String,
+        handle: String,
+        bio: String,
+        isGuest: Boolean,
+        avatarUri: String? = null
+    ) {
         val current = db.creatorProfileDao()
         current.upsertProfile(
             CreatorProfileEntity(
@@ -25,16 +31,38 @@ class FameLifeRepository(private val db: FameLifeDatabase) {
                 bio = bio,
                 isGuest = isGuest,
                 virtualFollowers = if (isGuest) 0 else 120,
-                totalStreamsCount = 0
+                totalStreamsCount = 0,
+                avatarUri = avatarUri
             )
         )
     }
 
-    suspend fun updateCreatorStatsAfterStream(newFollowers: Int) {
-        // Read via returning snapshot or upsert safely
-        db.creatorProfileDao().let { dao ->
-            // Lightweight direct increment handled in ViewModel with current snapshot
-        }
+    suspend fun updateProfileDetails(
+        existing: CreatorProfileEntity?,
+        displayName: String,
+        handle: String,
+        bio: String,
+        avatarUri: String?
+    ) {
+        val cleanedHandle = handle.trim().removePrefix("@").ifBlank { "famelife_creator" }
+        val cleanedName = displayName.trim().ifBlank { "Creator" }
+        val updated = existing?.copy(
+            displayName = cleanedName,
+            handle = cleanedHandle,
+            bio = bio.trim(),
+            isGuest = false,
+            avatarUri = avatarUri
+        ) ?: CreatorProfileEntity(
+            id = 1,
+            displayName = cleanedName,
+            handle = cleanedHandle,
+            bio = bio.trim(),
+            isGuest = false,
+            virtualFollowers = 120,
+            totalStreamsCount = 0,
+            avatarUri = avatarUri
+        )
+        db.creatorProfileDao().upsertProfile(updated)
     }
 
     suspend fun updateProfileEntity(entity: CreatorProfileEntity) {

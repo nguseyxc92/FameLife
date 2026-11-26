@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Share
@@ -37,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -57,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.data.CreatorProfileEntity
 import com.example.data.LedgerEntryEntity
 import com.example.data.ReturningFanEntity
 import com.example.data.StreamSessionEntity
@@ -67,6 +70,7 @@ import com.example.domain.model.FamePreset
 import com.example.domain.model.GiftType
 import com.example.domain.model.LivePlatformMode
 import com.example.domain.model.ViewerTimePoint
+import com.example.ui.components.EditCreatorAccountDialog
 import com.example.ui.components.GiftArtworkIcon
 import com.example.ui.components.SimulationWatermarkPill
 import com.example.ui.components.ViewerAvatar
@@ -394,6 +398,8 @@ fun WalletScreen(
 @Composable
 fun SettingsScreen(
     settings: UserSettings,
+    profile: CreatorProfileEntity? = null,
+    onUpdateProfile: (displayName: String, handle: String, bio: String, avatarUri: String?) -> Unit = { _, _, _, _ -> },
     onLanguageChange: (AudienceLanguage) -> Unit,
     onToneChange: (AudienceTone) -> Unit,
     onChatSpeedChange: (Float) -> Unit,
@@ -405,6 +411,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     var showResetDialog by remember { mutableStateOf(false) }
+    var showEditAccountDialog by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize().background(StudioObsidian), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
@@ -414,6 +421,61 @@ fun SettingsScreen(
         ) {
             item {
                 Text("Studio Settings", style = MaterialTheme.typography.headlineMedium)
+            }
+
+            item {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = StudioSurface,
+                    border = BorderStroke(1.dp, StudioOutline)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Creator Account", style = MaterialTheme.typography.titleMedium)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ViewerAvatar(
+                                initials = (profile?.displayName ?: "CR").take(2).uppercase(),
+                                seed = 17,
+                                size = 54.dp,
+                                hasHighlightRing = true,
+                                hasProfilePicture = !profile?.avatarUri.isNullOrBlank(),
+                                imageUri = profile?.avatarUri
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = profile?.displayName ?: "Creator",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "@${profile?.handle ?: "guest_live"}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = FameMint
+                                )
+                                if (!profile?.bio.isNullOrBlank()) {
+                                    Text(
+                                        text = profile?.bio.orEmpty(),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = TextSecondary,
+                                        maxLines = 2
+                                    )
+                                }
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = { showEditAccountDialog = true },
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, FameMint.copy(alpha = 0.6f)),
+                            modifier = Modifier.fillMaxWidth().testTag("settings_edit_account_btn")
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null, tint = FameMint, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Edit Account & Profile Photo", color = FameMint)
+                        }
+                    }
+                }
             }
 
             item {
@@ -479,7 +541,7 @@ fun SettingsScreen(
                     border = BorderStroke(1.dp, StudioOutline)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Privacy, AI & Accessibility", style = MaterialTheme.typography.titleMedium)
+                        Text("Privacy, Scene & Accessibility", style = MaterialTheme.typography.titleMedium)
 
                         SettingSwitchRow(
                             title = "Visual Scene Understanding",
@@ -534,6 +596,14 @@ fun SettingsScreen(
                 Spacer(Modifier.height(16.dp))
             }
         }
+    }
+
+    if (showEditAccountDialog) {
+        EditCreatorAccountDialog(
+            profile = profile,
+            onDismiss = { showEditAccountDialog = false },
+            onSave = onUpdateProfile
+        )
     }
 
     if (showResetDialog) {

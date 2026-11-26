@@ -229,5 +229,34 @@ class FameLifeEngineAcceptanceTest {
         mockAi.nextResponse = "{not valid json"
         val malformedRes = director.directAudience(doorCtx, speakers, null, isOnline = true)
         assertTrue(malformedRes is DirectorResult.Degraded)
+
+        // 5. Default local algorithmic director works offline & online with zero quota/API calls
+        val localDirector = AudienceDirector(random = Random(77L))
+        val localOffline = localDirector.directAudience(doorCtx, speakers, null, isOnline = false)
+        assertTrue(localOffline is DirectorResult.Success)
+        val localSuccess = localOffline as DirectorResult.Success
+        assertEquals("LOCAL_ENGINE", localSuccess.source)
+        assertTrue(localSuccess.reactions.size >= 3)
+        assertEquals(0, localDirector.apiRequestCount)
+    }
+
+    @Test
+    fun `first 5000 usernames are realistic and unique with ~90 percent profile pictures`() {
+        val pop = IdentityPopulationEngine(populationSize = 100_000)
+        val first5k = HashSet<String>(5_000)
+        var withPfp = 0
+        val sampleSize = 10_000
+
+        for (i in 0 until sampleSize) {
+            val v = pop.getViewerByIndex(i, memoryEnabled = false)
+            if (i < 5_000) {
+                first5k.add(v.username)
+            }
+            if (v.hasProfilePicture) withPfp++
+        }
+
+        assertTrue("Expected >= 4990 unique usernames in first 5000, got ${first5k.size}", first5k.size >= 4_990)
+        val pfpRatio = withPfp.toFloat() / sampleSize.toFloat()
+        assertTrue("Expected ~90% profile pictures (0.87..0.93), got $pfpRatio", pfpRatio in 0.87f..0.93f)
     }
 }
