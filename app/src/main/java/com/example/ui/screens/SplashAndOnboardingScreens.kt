@@ -38,6 +38,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.ProfilePhotoStorage
+import com.example.ui.components.VerifiedBadgeIcon
 import com.example.ui.components.ViewerAvatar
 import com.example.ui.theme.FameMint
 import com.example.ui.theme.FameMintContainer
@@ -136,13 +139,14 @@ fun SplashScreen(
 
 @Composable
 fun OnboardingScreen(
-    onComplete: (displayName: String, handle: String, bio: String, isGuest: Boolean, avatarUri: String?) -> Unit
+    onComplete: (displayName: String, handle: String, bio: String, isGuest: Boolean, avatarUri: String?, isVerified: Boolean) -> Unit
 ) {
     val context = LocalContext.current
     var displayName by remember { mutableStateOf("") }
     var handle by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
     var avatarUri by remember { mutableStateOf<String?>(null) }
+    var isVerified by remember { mutableStateOf(false) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -303,6 +307,42 @@ fun OnboardingScreen(
                         maxLines = 2,
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = StudioObsidian.copy(alpha = 0.55f),
+                        border = BorderStroke(1.dp, StudioOutline)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isVerified = !isVerified }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                VerifiedBadgeIcon(size = 20.dp)
+                                Column {
+                                    Text("Verification Badge", style = MaterialTheme.typography.labelLarge)
+                                    Text(
+                                        "Display blue verified badge on your profile & live streams",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = isVerified,
+                                onCheckedChange = { isVerified = it },
+                                colors = SwitchDefaults.colors(checkedThumbColor = StudioObsidian, checkedTrackColor = FameMint),
+                                modifier = Modifier.testTag("onboarding_verified_switch")
+                            )
+                        }
+                    }
                 }
             }
 
@@ -310,7 +350,7 @@ fun OnboardingScreen(
                 onClick = {
                     val name = displayName.ifBlank { "Creator" }
                     val h = handle.ifBlank { "famelife_creator" }
-                    onComplete(name, h, bio, false, avatarUri)
+                    onComplete(name, h, bio, false, avatarUri, isVerified)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -322,7 +362,7 @@ fun OnboardingScreen(
             }
 
             OutlinedButton(
-                onClick = { onComplete("Guest Creator", "guest_live", "", true, null) },
+                onClick = { onComplete("Guest Creator", "guest_live", "", true, null, isVerified) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)

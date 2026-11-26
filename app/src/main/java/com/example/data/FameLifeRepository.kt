@@ -20,7 +20,8 @@ class FameLifeRepository(private val db: FameLifeDatabase) {
         handle: String,
         bio: String,
         isGuest: Boolean,
-        avatarUri: String? = null
+        avatarUri: String? = null,
+        isVerified: Boolean = false
     ) {
         val current = db.creatorProfileDao()
         current.upsertProfile(
@@ -32,7 +33,8 @@ class FameLifeRepository(private val db: FameLifeDatabase) {
                 isGuest = isGuest,
                 virtualFollowers = if (isGuest) 0 else 120,
                 totalStreamsCount = 0,
-                avatarUri = avatarUri
+                avatarUri = avatarUri,
+                isVerified = isVerified
             )
         )
     }
@@ -42,7 +44,8 @@ class FameLifeRepository(private val db: FameLifeDatabase) {
         displayName: String,
         handle: String,
         bio: String,
-        avatarUri: String?
+        avatarUri: String?,
+        isVerified: Boolean = existing?.isVerified ?: false
     ) {
         val cleanedHandle = handle.trim().removePrefix("@").ifBlank { "famelife_creator" }
         val cleanedName = displayName.trim().ifBlank { "Creator" }
@@ -51,7 +54,8 @@ class FameLifeRepository(private val db: FameLifeDatabase) {
             handle = cleanedHandle,
             bio = bio.trim(),
             isGuest = false,
-            avatarUri = avatarUri
+            avatarUri = avatarUri,
+            isVerified = isVerified
         ) ?: CreatorProfileEntity(
             id = 1,
             displayName = cleanedName,
@@ -60,7 +64,8 @@ class FameLifeRepository(private val db: FameLifeDatabase) {
             isGuest = false,
             virtualFollowers = 120,
             totalStreamsCount = 0,
-            avatarUri = avatarUri
+            avatarUri = avatarUri,
+            isVerified = isVerified
         )
         db.creatorProfileDao().upsertProfile(updated)
     }

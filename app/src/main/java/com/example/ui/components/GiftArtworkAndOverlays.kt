@@ -276,6 +276,7 @@ fun SmallGiftBanner(
                         initials = evt.initials,
                         seed = evt.avatarSeed,
                         hasProfilePicture = evt.hasProfilePicture,
+                        imageUri = evt.avatarUri,
                         size = 28.dp
                     )
                     Column {

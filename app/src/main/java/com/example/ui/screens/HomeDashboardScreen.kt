@@ -69,6 +69,7 @@ import com.example.domain.model.CustomFameConfig
 import com.example.domain.model.FamePreset
 import com.example.domain.model.LivePlatformMode
 import com.example.ui.components.SimulationWatermarkPill
+import com.example.ui.components.VerifiedBadgeIcon
 import com.example.ui.components.ViewerAvatar
 import com.example.ui.components.formatCompactCount
 import com.example.ui.theme.FameMint
@@ -96,7 +97,7 @@ fun HomeDashboardScreen(
     notifications: List<StudioNotification> = emptyList(),
     onDismissNotification: (String) -> Unit = {},
     onClearNotifications: () -> Unit = {},
-    onUpdateProfile: (displayName: String, handle: String, bio: String, avatarUri: String?) -> Unit = { _, _, _, _ -> },
+    onUpdateProfile: (displayName: String, handle: String, bio: String, avatarUri: String?, isVerified: Boolean) -> Unit = { _, _, _, _, _ -> },
     onSelectPlatform: (LivePlatformMode) -> Unit,
     onSelectFamePreset: (FamePreset) -> Unit,
     onUpdateCustomFame: (CustomFameConfig) -> Unit,
@@ -411,6 +412,9 @@ private fun CreatorStudioHeader(
                                 text = profile?.displayName ?: "Creator Studio",
                                 style = MaterialTheme.typography.titleLarge
                             )
+                            if (profile?.isVerified == true) {
+                                VerifiedBadgeIcon(size = 17.dp)
+                            }
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = "Edit Account",

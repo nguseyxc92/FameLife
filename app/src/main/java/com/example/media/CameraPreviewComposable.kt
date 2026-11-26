@@ -1,5 +1,7 @@
 package com.example.media
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
@@ -12,7 +14,16 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
+import androidx.camera.core.UseCase
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.FallbackStrategy
+import androidx.camera.video.FileOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -66,7 +77,9 @@ fun LiveMediaStage(
     screenShareActive: Boolean,
     onRequestCameraPermission: () -> Unit,
     onSceneFrameSampled: (Bitmap) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    recordLiveEnabled: Boolean = false,
+    recordingSessionId: String = ""
 ) {
     when {
         sourceMode == StreamSourceMode.AUDIO_ONLY -> {
@@ -92,6 +105,8 @@ fun LiveMediaStage(
                 useFrontCamera = sourceMode == StreamSourceMode.FRONT_CAMERA,
                 visualUnderstandingEnabled = visualUnderstandingEnabled,
                 onSceneFrameSampled = onSceneFrameSampled,
+                recordLiveEnabled = recordLiveEnabled,
+                recordingSessionId = recordingSessionId,
                 modifier = modifier
             )
         }
@@ -103,6 +118,8 @@ private fun RealCameraXStage(
     useFrontCamera: Boolean,
     visualUnderstandingEnabled: Boolean,
     onSceneFrameSampled: (Bitmap) -> Unit,
+    recordLiveEnabled: Boolean,
+    recordingSessionId: String,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -119,8 +136,9 @@ private fun RealCameraXStage(
         }
     }
 
-    DisposableEffect(lifecycleOwner, useFrontCamera, visualUnderstandingEnabled) {
+    DisposableEffect(lifecycleOwner, useFrontCamera, visualUnderstandingEnabled, recordLiveEnabled, recordingSessionId) {
         val providerFuture = ProcessCameraProvider.getInstance(context)
+        var activeRecording: Recording? = null
         val listener = Runnable {
             try {
                 val cameraProvider = providerFuture.get()
@@ -136,17 +154,28 @@ private fun RealCameraXStage(
                     CameraSelector.DEFAULT_BACK_CAMERA
                 }
 
-                val useCases = mutableListOf<androidx.camera.core.UseCase>(preview)
-                if (visualUnderstandingEnabled) {
-                    val analyzer = ImageAnalysis.Builder()
+                val analyzer: ImageAnalysis? = if (visualUnderstandingEnabled) {
+                    ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build().apply {
+                            setAnalyzer(
+                                analysisExecutor,
+                                AdaptiveSceneAnalyzer(onSceneFrameSampled)
+                            )
+                        }
+                } else null
+
+                val videoCapture: VideoCapture<Recorder>? = if (recordLiveEnabled && recordingSessionId.isNotBlank()) {
+                    val recorder = Recorder.Builder()
+                        .setQualitySelector(
+                            QualitySelector.from(
+                                Quality.SD,
+                                FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)
+                            )
+                        )
                         .build()
-                    analyzer.setAnalyzer(
-                        analysisExecutor,
-                        AdaptiveSceneAnalyzer(onSceneFrameSampled)
-                    )
-                    useCases.add(analyzer)
-                }
+                    VideoCapture.withOutput(recorder)
+                } else null
 
                 val finalSelector = if (cameraProvider.hasCamera(selector)) {
                     selector
@@ -156,11 +185,56 @@ private fun RealCameraXStage(
                     CameraSelector.DEFAULT_FRONT_CAMERA
                 }
 
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    finalSelector,
-                    *useCases.toTypedArray()
-                )
+                val primaryUseCases = mutableListOf<UseCase>(preview).apply {
+                    analyzer?.let(::add)
+                    videoCapture?.let(::add)
+                }
+
+                var boundVideo = false
+                try {
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        finalSelector,
+                        *primaryUseCases.toTypedArray()
+                    )
+                    boundVideo = videoCapture != null
+                } catch (_: Exception) {
+                    cameraProvider.unbindAll()
+                    if (videoCapture != null) {
+                        try {
+                            cameraProvider.bindToLifecycle(lifecycleOwner, finalSelector, preview, videoCapture)
+                            boundVideo = true
+                        } catch (_: Exception) {
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(lifecycleOwner, finalSelector, preview)
+                        }
+                    } else {
+                        cameraProvider.bindToLifecycle(lifecycleOwner, finalSelector, preview)
+                    }
+                }
+
+                if (boundVideo && videoCapture != null) {
+                    val outFile = LiveRecordingCoordinator.prepareCameraSegmentFile(context, recordingSessionId)
+                    val outputOptions = FileOutputOptions.Builder(outFile).build()
+                    val hasMicPerm = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.RECORD_AUDIO
+                    ) == PackageManager.PERMISSION_GRANTED
+                    val pending = videoCapture.output.prepareRecording(context, outputOptions).apply {
+                        if (hasMicPerm) {
+                            runCatching { withAudioEnabled() }
+                        }
+                    }
+                    activeRecording = pending.start(ContextCompat.getMainExecutor(context)) { event ->
+                        if (event is VideoRecordEvent.Finalize) {
+                            LiveRecordingCoordinator.onCameraRecordingFinalized(
+                                file = outFile,
+                                hasError = event.hasError()
+                            )
+                        }
+                    }
+                    LiveRecordingCoordinator.registerCameraRecording(activeRecording!!, outFile)
+                }
                 cameraError = null
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to bind CameraX use cases", e)
@@ -171,6 +245,8 @@ private fun RealCameraXStage(
         providerFuture.addListener(listener, ContextCompat.getMainExecutor(context))
 
         onDispose {
+            runCatching { activeRecording?.stop() }
+            activeRecording = null
             try {
                 if (providerFuture.isDone) {
                     providerFuture.get().unbindAll()

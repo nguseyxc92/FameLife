@@ -126,8 +126,8 @@ fun FameLifeAppRoot(
 
         AppScreen.ONBOARDING -> {
             OnboardingScreen(
-                onComplete = { name, handle, bio, isGuest, avatarUri ->
-                    vm.completeOnboarding(name, handle, bio, isGuest, avatarUri)
+                onComplete = { name, handle, bio, isGuest, avatarUri, isVerified ->
+                    vm.completeOnboarding(name, handle, bio, isGuest, avatarUri, isVerified)
                     currentScreen = AppScreen.DASHBOARD
                 }
             )
@@ -251,6 +251,7 @@ fun FameLifeAppRoot(
                 sourceMode = preLiveSource,
                 onSelectSource = vm::setPreLiveSource,
                 onToggleVisualUnderstanding = vm::toggleVisualUnderstanding,
+                onToggleRecordLive = vm::toggleRecordLive,
                 onBack = { currentScreen = AppScreen.DASHBOARD },
                 onGoLive = { hasMicPerm ->
                     vm.startLiveStream(hasMicPermission = hasMicPerm)

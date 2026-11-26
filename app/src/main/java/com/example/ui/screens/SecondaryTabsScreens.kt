@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import android.content.Intent
+import android.widget.MediaController
+import android.widget.VideoView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,20 +23,27 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -61,7 +70,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.FileProvider
 import com.example.R
 import com.example.data.CreatorProfileEntity
 import com.example.data.LedgerEntryEntity
@@ -74,9 +86,11 @@ import com.example.domain.model.FamePreset
 import com.example.domain.model.GiftType
 import com.example.domain.model.LivePlatformMode
 import com.example.domain.model.ViewerTimePoint
+import com.example.engine.AudienceFaceAssets
 import com.example.ui.components.EditCreatorAccountDialog
 import com.example.ui.components.GiftArtworkIcon
 import com.example.ui.components.SimulationWatermarkPill
+import com.example.ui.components.VerifiedBadgeIcon
 import com.example.ui.components.ViewerAvatar
 import com.example.ui.components.ViewerGrowthChart
 import com.example.ui.components.formatCompactCount
@@ -91,6 +105,7 @@ import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.VideoLiveGold
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -106,6 +121,7 @@ fun HistoryScreen(
 ) {
     val context = LocalContext.current
     var expandedId by remember { mutableStateOf<String?>(null) }
+    var activePlaybackSession by remember { mutableStateOf<StreamSessionEntity?>(null) }
     val formatter = remember { SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()) }
 
     Box(modifier = modifier.fillMaxSize().background(StudioObsidian), contentAlignment = Alignment.TopCenter) {
@@ -136,6 +152,10 @@ fun HistoryScreen(
                     val mode = LivePlatformMode.fromId(session.platformModeId)
                     val preset = FamePreset.fromId(session.famePresetId)
                     val isExpanded = expandedId == session.sessionId
+                    val recordingFile = remember(session.recordingPath) {
+                        session.recordingPath?.takeIf { it.isNotBlank() }?.let(::File)
+                            ?.takeIf { it.exists() && it.length() > 0L }
+                    }
 
                     Surface(
                         shape = RoundedCornerShape(18.dp),
@@ -151,13 +171,42 @@ fun HistoryScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
                                     Text("${mode.displayName} • ${preset.title}", style = MaterialTheme.typography.titleMedium)
                                     Text(
                                         "${formatter.format(Date(session.startedAtMs))} • ${formatDuration(session.durationSec)}",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = TextSecondary
                                     )
+                                    if (recordingFile != null) {
+                                        Surface(
+                                            shape = RoundedCornerShape(999.dp),
+                                            color = FameMint.copy(alpha = 0.16f),
+                                            border = BorderStroke(1.dp, FameMint.copy(alpha = 0.5f)),
+                                            modifier = Modifier.testTag("history_recorded_badge_${session.sessionId}")
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Videocam,
+                                                    contentDescription = null,
+                                                    tint = FameMint,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                                Text(
+                                                    "Recorded",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = FameMint
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                                 Row {
                                     IconButton(onClick = {
@@ -181,6 +230,50 @@ fun HistoryScreen(
                                 Text("${session.totalVirtualCoins} virtual coins", style = MaterialTheme.typography.labelLarge, color = VideoLiveGold)
                             }
 
+                            if (recordingFile != null) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { activePlaybackSession = session },
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(1.dp, FameMint.copy(alpha = 0.65f)),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("history_watch_recording_${session.sessionId}")
+                                    ) {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = FameMint, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Watch Recording", color = FameMint)
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            val uri = FileProvider.getUriForFile(
+                                                context,
+                                                "${context.packageName}.fileprovider",
+                                                recordingFile
+                                            )
+                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                type = "video/mp4"
+                                                putExtra(Intent.EXTRA_STREAM, uri)
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(Intent.createChooser(shareIntent, "Share Stream Recording"))
+                                        },
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(1.dp, StudioOutline),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("history_share_recording_${session.sessionId}")
+                                    ) {
+                                        Icon(Icons.Default.Share, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Share Video", color = TextPrimary)
+                                    }
+                                }
+                            }
+
                             if (isExpanded) {
                                 ViewerGrowthChart(
                                     points = parseTimeline(session.timelineJson),
@@ -193,6 +286,55 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    activePlaybackSession?.let { playing ->
+        val videoFile = playing.recordingPath?.let(::File)
+        AlertDialog(
+            onDismissRequest = { activePlaybackSession = null },
+            containerColor = StudioSurface,
+            title = {
+                Text(
+                    "${LivePlatformMode.fromId(playing.platformModeId).displayName} Recording",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            },
+            text = {
+                if (videoFile != null && videoFile.exists()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(280.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color.Black),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AndroidView(
+                            factory = { ctx ->
+                                VideoView(ctx).apply {
+                                    val controller = MediaController(ctx)
+                                    controller.setAnchorView(this)
+                                    setMediaController(controller)
+                                    setVideoPath(videoFile.absolutePath)
+                                    setOnPreparedListener { mp ->
+                                        mp.isLooping = false
+                                        start()
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    Text("Recording file is no longer available on this device.", color = TextSecondary)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { activePlaybackSession = null }) {
+                    Text("Close", color = FameMint)
+                }
+            }
+        )
     }
 }
 
@@ -242,11 +384,14 @@ fun CommunityScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            val fanSeed = abs(fan.viewerId.hashCode())
                             ViewerAvatar(
                                 initials = fan.username.take(2).uppercase(),
-                                seed = abs(fan.viewerId.hashCode()),
+                                seed = fanSeed,
                                 size = 42.dp,
-                                hasHighlightRing = fan.loyaltyScore >= 0.8f
+                                hasHighlightRing = fan.loyaltyScore >= 0.8f,
+                                hasProfilePicture = AudienceFaceAssets.deterministicHasProfilePicture(fanSeed),
+                                imageUri = AudienceFaceAssets.deterministicFaceUri(fanSeed)
                             )
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Row(
@@ -403,7 +548,7 @@ fun WalletScreen(
 fun SettingsScreen(
     settings: UserSettings,
     profile: CreatorProfileEntity? = null,
-    onUpdateProfile: (displayName: String, handle: String, bio: String, avatarUri: String?) -> Unit = { _, _, _, _ -> },
+    onUpdateProfile: (displayName: String, handle: String, bio: String, avatarUri: String?, isVerified: Boolean) -> Unit = { _, _, _, _, _ -> },
     onLanguageChange: (AudienceLanguage) -> Unit,
     onToneChange: (AudienceTone) -> Unit,
     onChatSpeedChange: (Float) -> Unit,
@@ -416,10 +561,15 @@ fun SettingsScreen(
 ) {
     var showResetDialog by remember { mutableStateOf(false) }
     var showEditAccountDialog by remember { mutableStateOf(false) }
+    var showTebibLabsDialog by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize().background(StudioObsidian), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
-            modifier = Modifier.widthIn(max = 720.dp).fillMaxSize(),
+            modifier = Modifier
+                .widthIn(max = 720.dp)
+                .fillMaxSize()
+                .testTag("settings_list"),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -449,10 +599,21 @@ fun SettingsScreen(
                                 imageUri = profile?.avatarUri
                             )
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = profile?.displayName ?: "Creator",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                ) {
+                                    Text(
+                                        text = profile?.displayName ?: "Creator",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    if (profile?.isVerified == true) {
+                                        VerifiedBadgeIcon(
+                                            size = 16.dp,
+                                            modifier = Modifier.testTag("settings_verified_badge")
+                                        )
+                                    }
+                                }
                                 Text(
                                     text = "@${profile?.handle ?: "guest_live"}",
                                     style = MaterialTheme.typography.bodyMedium,
@@ -460,7 +621,7 @@ fun SettingsScreen(
                                 )
                                 if (!profile?.bio.isNullOrBlank()) {
                                     Text(
-                                        text = profile?.bio.orEmpty(),
+                                        text = profile.bio,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = TextSecondary,
                                         maxLines = 2
@@ -573,56 +734,95 @@ fun SettingsScreen(
                 Surface(
                     shape = RoundedCornerShape(18.dp),
                     color = StudioSurface,
-                    border = BorderStroke(1.dp, StudioOutline)
+                    border = BorderStroke(1.dp, StudioOutline),
+                    modifier = Modifier.testTag("settings_about_card")
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        Text("About", style = MaterialTheme.typography.titleMedium)
+
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.ic_famelife_icon),
-                                contentDescription = "FameLife app icon",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                            )
-                            Text("About Tebib Labs", style = MaterialTheme.typography.titleMedium)
-                        }
-                        Image(
-                            painter = painterResource(R.drawable.tebib_labs_logo),
-                            contentDescription = "Tebib Labs logo",
-                            contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(96.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                        )
-                        Text(
-                            text = "Tebib Labs is an independent technology and software development company focused on artificial intelligence, computational engineering, scientific software and interactive digital experiences. We build innovative, intelligent and user-focused applications that connect engineering, technology and creativity.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
-                        )
-                        Text(
-                            text = "FameLife is developed by Tebib Labs.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = FameMint,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "© 2026 Tebib Labs. All rights reserved.",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "Live modes are inspired by Instagram Live, TikTok LIVE, YouTube Live, and Twitch UX conventions. FameLife is not affiliated with or endorsed by any social media platform. All viewers, chats, and gifts are simulated.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted
-                        )
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { showTebibLabsDialog = true }
+                                .padding(vertical = 4.dp)
+                                .testTag("about_tebib_labs_btn"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "This app is developed by ",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    text = "Tebib Labs",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        textDecoration = TextDecoration.Underline
+                                    ),
+                                    color = FameMint,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = ".",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = "Open Tebib Labs details",
+                                tint = TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        HorizontalDivider(color = StudioOutline.copy(alpha = 0.6f))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { showPrivacyDialog = true }
+                                .padding(vertical = 6.dp)
+                                .testTag("about_privacy_btn"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PrivacyTip,
+                                    contentDescription = null,
+                                    tint = FameMint,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Column {
+                                    Text("Privacy", style = MaterialTheme.typography.labelLarge)
+                                    Text(
+                                        "On-device storage, permissions & simulation notice",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = "Open Privacy information",
+                                tint = TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -650,6 +850,106 @@ fun SettingsScreen(
         )
     }
 
+    if (showTebibLabsDialog) {
+        AlertDialog(
+            onDismissRequest = { showTebibLabsDialog = false },
+            containerColor = StudioSurface,
+            title = { Text("About Tebib Labs") },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.tebib_labs_logo),
+                        contentDescription = "Tebib Labs logo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(96.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                    )
+                    Text(
+                        text = "Tebib Labs is an independent technology and software development company focused on artificial intelligence, computational engineering, scientific software and interactive digital experiences. We build innovative, intelligent and user-focused applications that connect engineering, technology and creativity.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "FameLife is developed by Tebib Labs.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = FameMint,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "© 2026 Tebib Labs. All rights reserved.",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Live modes are inspired by Instagram Live, TikTok LIVE, YouTube Live, and Twitch UX conventions. FameLife is not affiliated with or endorsed by any social media platform. All viewers, chats, and gifts are simulated.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextMuted
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTebibLabsDialog = false }) {
+                    Text("Close", color = FameMint)
+                }
+            }
+        )
+    }
+
+    if (showPrivacyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            containerColor = StudioSurface,
+            title = { Text("Privacy") },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "100% Private Local Simulation",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = FameMint
+                    )
+                    Text(
+                        text = "FameLife does not broadcast to the internet or connect to external social media servers. Your creator profile, stream history, returning fan memories, and virtual wallet ledger are stored strictly on your device.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "Camera, Microphone & Screen Capture",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Camera, microphone, and screen sharing are used only while you are live or previewing in-app. Streams are only recorded locally if you explicitly enable Record Livestream before going live, and recorded files remain inside private app storage on your device until you share or delete them.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "Full Control",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "You can delete individual stream sessions (including their recordings), clear returning fan entries, or erase all local app data anytime from Studio Settings.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPrivacyDialog = false }) {
+                    Text("Close", color = FameMint)
+                }
+            }
+        )
+    }
+
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
@@ -657,7 +957,7 @@ fun SettingsScreen(
             title = { Text("Delete All Local Data?") },
             text = {
                 Text(
-                    "This removes your local creator profile, stream history, virtual wallet ledger, and returning fan memories.",
+                    "This removes your local creator profile, stream history, saved stream recordings, virtual wallet ledger, and returning fan memories.",
                     color = TextSecondary
                 )
             },

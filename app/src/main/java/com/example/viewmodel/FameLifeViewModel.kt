@@ -38,6 +38,7 @@ import com.example.engine.GiftOverlayQueue
 import com.example.engine.IdentityPopulationEngine
 import com.example.engine.StochasticAudienceEngine
 import com.example.engine.VirtualEconomyEngine
+import com.example.media.LiveRecordingCoordinator
 import com.example.media.ScreenCaptureBridge
 import com.example.media.ScreenCaptureService
 import com.example.media.SpeechEngineState
@@ -112,7 +113,8 @@ data class LiveSessionUiState(
     val aiStatus: AiStatus = AiStatus.Ready,
     val viewerTimeline: List<ViewerTimePoint> = emptyList(),
     val apiCallsCount: Int = 0,
-    val sessionReminderTriggered: Boolean = false
+    val sessionReminderTriggered: Boolean = false,
+    val recordLiveEnabled: Boolean = false
 )
 
 class FameLifeViewModel(application: Application) : AndroidViewModel(application) {
@@ -183,10 +185,11 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
         handle: String,
         bio: String,
         isGuest: Boolean,
-        avatarUri: String? = null
+        avatarUri: String? = null,
+        isVerified: Boolean = false
     ) {
         viewModelScope.launch {
-            repository.saveCreatorProfile(displayName, handle, bio, isGuest, avatarUri)
+            repository.saveCreatorProfile(displayName, handle, bio, isGuest, avatarUri, isVerified)
             settingsStore.updateSettings { it.copy(onboardingCompleted = true) }
         }
     }
@@ -195,7 +198,8 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
         displayName: String,
         handle: String,
         bio: String,
-        avatarUri: String?
+        avatarUri: String?,
+        isVerified: Boolean = creatorProfile.value?.isVerified ?: false
     ) {
         viewModelScope.launch {
             repository.updateProfileDetails(
@@ -203,7 +207,8 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
                 displayName = displayName,
                 handle = handle,
                 bio = bio,
-                avatarUri = avatarUri
+                avatarUri = avatarUri,
+                isVerified = isVerified
             )
         }
     }
@@ -277,6 +282,10 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { settingsStore.updateSettings { it.copy(reducedMotion = enabled) } }
     }
 
+    fun toggleRecordLive(enabled: Boolean) {
+        viewModelScope.launch { settingsStore.updateSettings { it.copy(recordLiveEnabled = enabled) } }
+    }
+
     fun setPreLiveSource(source: StreamSourceMode) {
         _preLiveSource.value = source
     }
@@ -315,6 +324,14 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
             economyEngine = VirtualEconomyEngine(sessionId = sessionId, seed = System.nanoTime())
 
             val source = _preLiveSource.value
+            val recordEnabled = currentSettings.recordLiveEnabled
+            if (recordEnabled) {
+                LiveRecordingCoordinator.beginSession(sessionId)
+                if (source == StreamSourceMode.AUDIO_ONLY && hasMicPermission) {
+                    LiveRecordingCoordinator.startAudioOnlyRecording(getApplication(), sessionId)
+                }
+            }
+
             _liveState.value = LiveSessionUiState(
                 isLive = true,
                 isPaused = false,
@@ -327,7 +344,8 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
                 visualUnderstandingEnabled = currentSettings.visualUnderstandingEnabled,
                 currentViewers = returningCore,
                 peakViewers = returningCore,
-                aiStatus = AiStatus.Ready
+                aiStatus = AiStatus.Ready,
+                recordLiveEnabled = recordEnabled
             )
 
             if (hasMicPermission) {
@@ -612,7 +630,8 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
                             gift = gift,
                             count = 1,
                             timestampMs = System.currentTimeMillis(),
-                            hasProfilePicture = speaker.hasProfilePicture
+                            hasProfilePicture = speaker.hasProfilePicture,
+                            avatarUri = speaker.avatarUri
                         )
                         if (econ.recordGiftEvent(giftEvt)) {
                             handleNewGiftEvent(giftEvt, speakers)
@@ -663,7 +682,8 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
             contextId = activeContextId,
             giftId = event.gift.id,
             virtualCoins = event.totalVirtualCoins,
-            hasProfilePicture = event.hasProfilePicture
+            hasProfilePicture = event.hasProfilePicture,
+            avatarUri = event.avatarUri
         )
 
         populationEngine.recordParticipation(event.viewerId)
@@ -718,7 +738,8 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
             text = text,
             contextId = contextId,
             isReturningFan = isReturningFan,
-            hasProfilePicture = viewer.hasProfilePicture
+            hasProfilePicture = viewer.hasProfilePicture,
+            avatarUri = viewer.avatarUri
         )
         _liveState.update { state ->
             state.copy(
@@ -833,24 +854,6 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
         val totalCoins = econ?.reconcileTotalCoins() ?: state.totalVirtualCoins
         val retention = (state.engagementScore * 100).toInt().coerceIn(12, 99)
 
-        val sessionEntity = StreamSessionEntity(
-            sessionId = state.sessionId,
-            platformModeId = state.platformMode.id,
-            famePresetId = state.famePreset.id,
-            startedAtMs = sessionStartedAtMs,
-            durationSec = state.elapsedSec.coerceAtLeast(1),
-            peakViewers = state.peakViewers,
-            avgViewers = state.avgViewers,
-            uniqueParticipants = state.uniqueParticipants,
-            totalMessages = state.totalMessagesCount,
-            newFollowers = state.newFollowers,
-            totalLikes = state.totalLikes,
-            totalGifts = state.totalGiftsCount,
-            totalVirtualCoins = totalCoins,
-            retentionPercent = retention,
-            timelineJson = repository.serializeTimeline(state.viewerTimeline)
-        )
-
         val fansToRemember = if (settings.value.fanMemoryEnabled) {
             val topDonors = sessionDonors.values.take(6)
             val speakers = state.searchableChatHistory
@@ -883,6 +886,31 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
         } else emptyList()
 
         viewModelScope.launch {
+            val savedRecordingPath = if (state.recordLiveEnabled) {
+                withContext(Dispatchers.IO) {
+                    LiveRecordingCoordinator.stopAndAwaitFinalPath()
+                }
+            } else null
+
+            val sessionEntity = StreamSessionEntity(
+                sessionId = state.sessionId,
+                platformModeId = state.platformMode.id,
+                famePresetId = state.famePreset.id,
+                startedAtMs = sessionStartedAtMs,
+                durationSec = state.elapsedSec.coerceAtLeast(1),
+                peakViewers = state.peakViewers,
+                avgViewers = state.avgViewers,
+                uniqueParticipants = state.uniqueParticipants,
+                totalMessages = state.totalMessagesCount,
+                newFollowers = state.newFollowers,
+                totalLikes = state.totalLikes,
+                totalGifts = state.totalGiftsCount,
+                totalVirtualCoins = totalCoins,
+                retentionPercent = retention,
+                timelineJson = repository.serializeTimeline(state.viewerTimeline),
+                recordingPath = savedRecordingPath
+            )
+
             repository.persistCompletedSession(sessionEntity, ledger, fansToRemember)
             creatorProfile.value?.let { current ->
                 repository.updateProfileEntity(
@@ -899,7 +927,13 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun deleteSession(sessionId: String) {
-        viewModelScope.launch { repository.deleteSession(sessionId) }
+        viewModelScope.launch {
+            val recordingPath = streamHistory.value.firstOrNull { it.sessionId == sessionId }?.recordingPath
+            withContext(Dispatchers.IO) {
+                LiveRecordingCoordinator.deleteRecordingFile(recordingPath)
+            }
+            repository.deleteSession(sessionId)
+        }
     }
 
     fun deleteReturningFan(viewerId: String) {
@@ -908,6 +942,9 @@ class FameLifeViewModel(application: Application) : AndroidViewModel(application
 
     fun deleteAllDataAndReset() {
         viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                LiveRecordingCoordinator.deleteAllRecordings(getApplication())
+            }
             repository.deleteAllLocalData()
             settingsStore.resetAllPreferences()
         }

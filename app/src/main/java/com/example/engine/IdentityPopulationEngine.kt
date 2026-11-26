@@ -29,6 +29,9 @@ class IdentityPopulationEngine(
     private val returningMemory = LinkedHashMap<String, ReturningFanMemory>()
     private val lastSpokeTickByViewer = HashMap<Int, Int>(4096)
     private val distinctParticipantIds = HashSet<String>(4096)
+    private val assignedFaceByViewerId = HashMap<String, String>(256)
+    private var shuffledFaceDeck: List<String> = AudienceFaceAssets.FACE_FILES.shuffled(Random(System.nanoTime()))
+    private var faceDeckCursor = 0
     private var uniqueMessageEvents = 0L
 
     private val firstNames = arrayOf(
@@ -98,7 +101,31 @@ class IdentityPopulationEngine(
     fun clearSessionTracking() {
         lastSpokeTickByViewer.clear()
         distinctParticipantIds.clear()
+        assignedFaceByViewerId.clear()
+        shuffledFaceDeck = AudienceFaceAssets.FACE_FILES.shuffled(Random(System.nanoTime()))
+        faceDeckCursor = 0
         uniqueMessageEvents = 0L
+    }
+
+    private fun resolveSessionAvatarUri(
+        viewerId: String,
+        safeIdx: Int,
+        hasProfilePicture: Boolean,
+        allocateUnique: Boolean
+    ): String? {
+        if (!hasProfilePicture) return null
+        assignedFaceByViewerId[viewerId]?.let { return it }
+        val uri = if (allocateUnique && assignedFaceByViewerId.size < 2000) {
+            val file = shuffledFaceDeck[faceDeckCursor % shuffledFaceDeck.size]
+            faceDeckCursor++
+            AudienceFaceAssets.assetUri(file).also { assignedFaceByViewerId[viewerId] = it }
+        } else {
+            val idx = ((safeIdx.toLong() * 31L) % shuffledFaceDeck.size).toInt().let {
+                if (it < 0) it + shuffledFaceDeck.size else it
+            }
+            AudienceFaceAssets.assetUri(shuffledFaceDeck[idx])
+        }
+        return uri
     }
 
     private fun generateRealisticUsername(safeIdx: Int, h1: Long, h2: Long): String {
@@ -208,6 +235,12 @@ class IdentityPopulationEngine(
         }.coerceIn(0f, 1f)
 
         val interestIdx = ((h3 ushr 28) % interests.size).toInt().let { if (it < 0) it + interests.size else it }
+        val avatarUri = resolveSessionAvatarUri(
+            viewerId = viewerId,
+            safeIdx = safeIdx,
+            hasProfilePicture = hasProfilePicture,
+            allocateUnique = false
+        )
 
         return ViewerIdentity(
             viewerId = viewerId,
@@ -224,7 +257,8 @@ class IdentityPopulationEngine(
             joinCount = mem?.joinCount ?: 1,
             rememberedTopic = mem?.lastTopic,
             totalGiftedCoins = mem?.totalGiftsCoins ?: 0,
-            hasProfilePicture = hasProfilePicture
+            hasProfilePicture = hasProfilePicture,
+            avatarUri = avatarUri
         )
     }
 
@@ -285,9 +319,17 @@ class IdentityPopulationEngine(
             }
             if (!langMatch) continue
 
+            val allocated = viewer.copy(
+                avatarUri = resolveSessionAvatarUri(
+                    viewerId = viewer.viewerId,
+                    safeIdx = viewer.numericIndex,
+                    hasProfilePicture = viewer.hasProfilePicture,
+                    allocateUnique = true
+                )
+            )
             pickedIndices.add(idx)
             lastSpokeTickByViewer[idx] = currentTick
-            result.add(viewer)
+            result.add(allocated)
         }
 
         return result

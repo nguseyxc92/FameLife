@@ -172,7 +172,9 @@ fun LiveRoomScreen(
             screenShareActive = screenShareActive,
             onRequestCameraPermission = { cameraLauncher.launch(Manifest.permission.CAMERA) },
             onSceneFrameSampled = onVisualFrameSampled,
-            modifier = mod
+            modifier = mod,
+            recordLiveEnabled = state.recordLiveEnabled,
+            recordingSessionId = state.sessionId
         )
     }
 
@@ -184,6 +186,7 @@ fun LiveRoomScreen(
                     state = state,
                     creatorHandle = profile?.handle ?: "creator_live",
                     creatorAvatarUri = profile?.avatarUri,
+                    creatorVerified = profile?.isVerified == true,
                     reducedMotion = settings.reducedMotion,
                     draftMessage = draftMessage,
                     onDraftChange = { draftMessage = it },
@@ -203,6 +206,7 @@ fun LiveRoomScreen(
                     state = state,
                     creatorName = profile?.displayName ?: "Creator",
                     creatorAvatarUri = profile?.avatarUri,
+                    creatorVerified = profile?.isVerified == true,
                     draftMessage = draftMessage,
                     onDraftChange = { draftMessage = it },
                     onSendUtterance = sendUtteranceAction,
@@ -221,6 +225,8 @@ fun LiveRoomScreen(
             LivePlatformMode.VIDEO_LIVE -> {
                 VideoLiveLayout(
                     state = state,
+                    creatorName = profile?.displayName ?: "Creator",
+                    creatorVerified = profile?.isVerified == true,
                     draftMessage = draftMessage,
                     onDraftChange = { draftMessage = it },
                     onSendUtterance = sendUtteranceAction,
@@ -236,6 +242,8 @@ fun LiveRoomScreen(
             LivePlatformMode.GAMING_LIVE -> {
                 GamingLiveLayout(
                     state = state,
+                    creatorName = profile?.displayName ?: "Creator",
+                    creatorVerified = profile?.isVerified == true,
                     draftMessage = draftMessage,
                     onDraftChange = { draftMessage = it },
                     onSendUtterance = sendUtteranceAction,
@@ -418,6 +426,7 @@ fun LiveRoomScreen(
                                     initials = sup.initials,
                                     seed = sup.avatarSeed,
                                     hasProfilePicture = sup.hasProfilePicture,
+                                    imageUri = sup.avatarUri,
                                     size = 32.dp
                                 )
                                 Text(sup.username, style = MaterialTheme.typography.labelLarge)

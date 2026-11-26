@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +25,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,13 +54,14 @@ import com.example.ui.theme.TextSecondary
 fun EditCreatorAccountDialog(
     profile: CreatorProfileEntity?,
     onDismiss: () -> Unit,
-    onSave: (displayName: String, handle: String, bio: String, avatarUri: String?) -> Unit
+    onSave: (displayName: String, handle: String, bio: String, avatarUri: String?, isVerified: Boolean) -> Unit
 ) {
     val context = LocalContext.current
     var displayName by remember(profile) { mutableStateOf(profile?.displayName ?: "") }
     var handle by remember(profile) { mutableStateOf(profile?.handle ?: "") }
     var bio by remember(profile) { mutableStateOf(profile?.bio ?: "") }
     var avatarUri by remember(profile) { mutableStateOf(profile?.avatarUri) }
+    var isVerified by remember(profile) { mutableStateOf(profile?.isVerified == true) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -154,6 +159,42 @@ fun EditCreatorAccountDialog(
                     maxLines = 2,
                     modifier = Modifier.fillMaxWidth().testTag("account_bio_input")
                 )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = StudioObsidian.copy(alpha = 0.55f),
+                    border = BorderStroke(1.dp, StudioOutline)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isVerified = !isVerified }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            VerifiedBadgeIcon(size = 20.dp)
+                            Column {
+                                Text("Verification Badge", style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    "Show blue verified check while live",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = isVerified,
+                            onCheckedChange = { isVerified = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = StudioObsidian, checkedTrackColor = FameMint),
+                            modifier = Modifier.testTag("account_verified_switch")
+                        )
+                    }
+                }
                 Text(
                     text = "Saved privately on your device.",
                     style = MaterialTheme.typography.labelSmall,
@@ -164,7 +205,7 @@ fun EditCreatorAccountDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    onSave(displayName, handle, bio, avatarUri)
+                    onSave(displayName, handle, bio, avatarUri, isVerified)
                     onDismiss()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = FameMint, contentColor = StudioObsidian),

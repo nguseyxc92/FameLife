@@ -83,7 +83,8 @@ class VirtualEconomyEngine(
             gift = giftType,
             count = count,
             timestampMs = timestampMs,
-            hasProfilePicture = donor.hasProfilePicture
+            hasProfilePicture = donor.hasProfilePicture,
+            avatarUri = donor.avatarUri
         )
 
         recordGiftEvent(giftEvent)
@@ -122,7 +123,8 @@ class VirtualEconomyEngine(
             initials = event.initials,
             avatarSeed = event.avatarSeed,
             totalCoins = (existing?.totalCoins ?: 0) + event.totalVirtualCoins,
-            hasProfilePicture = event.hasProfilePicture
+            hasProfilePicture = event.hasProfilePicture,
+            avatarUri = event.avatarUri
         )
         return true
     }

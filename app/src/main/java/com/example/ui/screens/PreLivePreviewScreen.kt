@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.ScreenShare
+import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -72,6 +75,7 @@ fun PreLivePreviewScreen(
     sourceMode: StreamSourceMode,
     onSelectSource: (StreamSourceMode) -> Unit,
     onToggleVisualUnderstanding: (Boolean) -> Unit,
+    onToggleRecordLive: (Boolean) -> Unit,
     onBack: () -> Unit,
     onGoLive: (hasMicPermission: Boolean) -> Unit
 ) {
@@ -182,7 +186,9 @@ fun PreLivePreviewScreen(
                 border = BorderStroke(1.dp, StudioOutline)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text("Broadcast Source", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
@@ -252,6 +258,38 @@ fun PreLivePreviewScreen(
                             checked = settings.visualUnderstandingEnabled,
                             onCheckedChange = onToggleVisualUnderstanding,
                             colors = SwitchDefaults.colors(checkedThumbColor = StudioObsidian, checkedTrackColor = FameMint)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VideoFile,
+                                contentDescription = null,
+                                tint = FameMint
+                            )
+                            Column {
+                                Text("Record Livestream", style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    "Automatically save local recording to History after ending",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = settings.recordLiveEnabled,
+                            onCheckedChange = onToggleRecordLive,
+                            colors = SwitchDefaults.colors(checkedThumbColor = StudioObsidian, checkedTrackColor = FameMint),
+                            modifier = Modifier.testTag("prelive_record_switch")
                         )
                     }
 

@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -98,6 +99,30 @@ fun SimulationWatermarkPill(
 }
 
 @Composable
+fun VerifiedBadgeIcon(
+    size: Dp = 16.dp,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.size(size),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(size * 0.56f)
+                .clip(CircleShape)
+                .background(Color.White)
+        )
+        Icon(
+            imageVector = Icons.Filled.Verified,
+            contentDescription = "Verified creator",
+            tint = Color(0xFF1D9BF0),
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
 fun ViewerAvatar(
     initials: String,
     seed: Int,
@@ -121,6 +146,7 @@ fun ViewerAvatar(
             modifier = modifier
                 .size(size)
                 .clip(CircleShape)
+                .background(Color(0xFF2B2F3B))
                 .then(ringModifier)
         )
         return

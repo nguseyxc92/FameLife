@@ -23,7 +23,8 @@ data class CreatorProfileEntity(
     val isGuest: Boolean,
     val virtualFollowers: Int,
     val totalStreamsCount: Int,
-    val avatarUri: String? = null
+    val avatarUri: String? = null,
+    val isVerified: Boolean = false
 )
 
 @Entity(tableName = "stream_sessions")
@@ -42,7 +43,8 @@ data class StreamSessionEntity(
     val totalGifts: Int,
     val totalVirtualCoins: Int,
     val retentionPercent: Int,
-    val timelineJson: String
+    val timelineJson: String,
+    val recordingPath: String? = null
 )
 
 @Entity(tableName = "ledger_entries")
@@ -140,7 +142,7 @@ interface ReturningFanDao {
         LedgerEntryEntity::class,
         ReturningFanEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class FameLifeDatabase : RoomDatabase() {
@@ -159,6 +161,13 @@ abstract class FameLifeDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE creator_profile ADD COLUMN isVerified INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE stream_sessions ADD COLUMN recordingPath TEXT")
+            }
+        }
+
         fun getInstance(context: Context): FameLifeDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -166,7 +175,7 @@ abstract class FameLifeDatabase : RoomDatabase() {
                     FameLifeDatabase::class.java,
                     "famelife_studio.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { INSTANCE = it }
             }

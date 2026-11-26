@@ -28,7 +28,8 @@ data class UserSettings(
     val visualUnderstandingEnabled: Boolean = false,
     val fanMemoryEnabled: Boolean = true,
     val reducedMotion: Boolean = false,
-    val sessionReminderMinutes: Int = 30
+    val sessionReminderMinutes: Int = 30,
+    val recordLiveEnabled: Boolean = false
 )
 
 class SettingsDataStore(private val context: Context) {
@@ -45,6 +46,7 @@ class SettingsDataStore(private val context: Context) {
         val FAN_MEMORY = booleanPreferencesKey("fan_memory")
         val REDUCED_MOTION = booleanPreferencesKey("reduced_motion")
         val REMINDER_MINS = intPreferencesKey("reminder_mins")
+        val RECORD_LIVE = booleanPreferencesKey("record_live_enabled")
     }
 
     val settingsFlow: Flow<UserSettings> = context.dataStore.data.map { prefs ->
@@ -62,7 +64,8 @@ class SettingsDataStore(private val context: Context) {
             visualUnderstandingEnabled = prefs[Keys.VISUAL_AI] ?: false,
             fanMemoryEnabled = prefs[Keys.FAN_MEMORY] ?: true,
             reducedMotion = prefs[Keys.REDUCED_MOTION] ?: false,
-            sessionReminderMinutes = prefs[Keys.REMINDER_MINS] ?: 30
+            sessionReminderMinutes = prefs[Keys.REMINDER_MINS] ?: 30,
+            recordLiveEnabled = prefs[Keys.RECORD_LIVE] ?: false
         )
     }
 
@@ -80,7 +83,8 @@ class SettingsDataStore(private val context: Context) {
                 visualUnderstandingEnabled = prefs[Keys.VISUAL_AI] ?: false,
                 fanMemoryEnabled = prefs[Keys.FAN_MEMORY] ?: true,
                 reducedMotion = prefs[Keys.REDUCED_MOTION] ?: false,
-                sessionReminderMinutes = prefs[Keys.REMINDER_MINS] ?: 30
+                sessionReminderMinutes = prefs[Keys.REMINDER_MINS] ?: 30,
+                recordLiveEnabled = prefs[Keys.RECORD_LIVE] ?: false
             )
             val updated = transform(current)
             prefs[Keys.ONBOARDING_COMPLETED] = updated.onboardingCompleted
@@ -95,6 +99,7 @@ class SettingsDataStore(private val context: Context) {
             prefs[Keys.FAN_MEMORY] = updated.fanMemoryEnabled
             prefs[Keys.REDUCED_MOTION] = updated.reducedMotion
             prefs[Keys.REMINDER_MINS] = updated.sessionReminderMinutes
+            prefs[Keys.RECORD_LIVE] = updated.recordLiveEnabled
         }
     }
 

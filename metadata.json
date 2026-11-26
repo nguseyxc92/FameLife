@@ -2,5 +2,7 @@
   "name": "FameLife",
   "description": "AI-powered livestream and fame simulator by Tebib Labs with context-aware virtual audiences and four distinct live studio modes.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -70,6 +70,7 @@ import com.example.domain.model.ChatEventType
 import com.example.domain.model.ViewerArchetype
 import com.example.ui.components.FloatingHeartsColumn
 import com.example.ui.components.SmallGiftBanner
+import com.example.ui.components.VerifiedBadgeIcon
 import com.example.ui.components.ViewerAvatar
 import com.example.ui.components.formatCompactCount
 import com.example.ui.components.formatDuration
@@ -104,6 +105,7 @@ fun PhotoLiveOverlay(
     state: LiveSessionUiState,
     creatorHandle: String,
     creatorAvatarUri: String? = null,
+    creatorVerified: Boolean = false,
     reducedMotion: Boolean,
     draftMessage: String,
     onDraftChange: (String) -> Unit,
@@ -161,12 +163,23 @@ fun PhotoLiveOverlay(
                             imageUri = creatorAvatarUri
                         )
                         Column {
-                            Text(
-                                text = creatorHandle,
-                                style = MaterialTheme.typography.labelLarge,
-                                color = Color.White,
-                                maxLines = 1
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = creatorHandle,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.White,
+                                    maxLines = 1
+                                )
+                                if (creatorVerified) {
+                                    VerifiedBadgeIcon(
+                                        size = 14.dp,
+                                        modifier = Modifier.testTag("live_verified_badge")
+                                    )
+                                }
+                            }
                             Text(
                                 text = formatDuration(state.elapsedSec),
                                 style = MaterialTheme.typography.labelSmall,
@@ -254,6 +267,7 @@ fun PhotoLiveOverlay(
                                         initials = msg.initials,
                                         seed = msg.avatarSeed,
                                         hasProfilePicture = msg.hasProfilePicture,
+                                        imageUri = msg.avatarUri,
                                         size = 26.dp
                                     )
                                     Column {
@@ -352,6 +366,7 @@ fun ShortLiveOverlay(
     state: LiveSessionUiState,
     creatorName: String,
     creatorAvatarUri: String? = null,
+    creatorVerified: Boolean = false,
     draftMessage: String,
     onDraftChange: (String) -> Unit,
     onSendUtterance: () -> Unit,
@@ -411,7 +426,18 @@ fun ShortLiveOverlay(
                                 imageUri = creatorAvatarUri
                             )
                             Column {
-                                Text(creatorName, style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 1)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(creatorName, style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 1)
+                                    if (creatorVerified) {
+                                        VerifiedBadgeIcon(
+                                            size = 14.dp,
+                                            modifier = Modifier.testTag("live_verified_badge")
+                                        )
+                                    }
+                                }
                                 Text(
                                     "${formatCompactCount(state.totalLikes)} likes",
                                     style = MaterialTheme.typography.labelSmall,
@@ -431,6 +457,7 @@ fun ShortLiveOverlay(
                                 initials = sup.initials,
                                 seed = sup.avatarSeed,
                                 hasProfilePicture = sup.hasProfilePicture,
+                                imageUri = sup.avatarUri,
                                 size = 26.dp,
                                 modifier = Modifier.clickable { onOpenSupporters() }
                             )
@@ -493,6 +520,7 @@ fun ShortLiveOverlay(
                                         initials = msg.initials,
                                         seed = msg.avatarSeed,
                                         hasProfilePicture = msg.hasProfilePicture,
+                                        imageUri = msg.avatarUri,
                                         size = 22.dp
                                     )
                                     msg.archetype.badgeLabel?.let { b ->
@@ -577,6 +605,8 @@ fun ShortLiveOverlay(
 @Composable
 fun VideoLiveLayout(
     state: LiveSessionUiState,
+    creatorName: String = "Creator",
+    creatorVerified: Boolean = false,
     draftMessage: String,
     onDraftChange: (String) -> Unit,
     onSendUtterance: () -> Unit,
@@ -599,7 +629,7 @@ fun VideoLiveLayout(
             Row(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.weight(0.60f).fillMaxHeight()) {
                     videoStageContent(Modifier.fillMaxSize())
-                    VideoStageOverlayControls(state, onOpenControls, onRequestEnd)
+                    VideoStageOverlayControls(state, creatorName, creatorVerified, onOpenControls, onRequestEnd)
                 }
                 VideoChatPanel(
                     state = state,
@@ -616,7 +646,7 @@ fun VideoLiveLayout(
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.fillMaxWidth().height(stageHeight)) {
                     videoStageContent(Modifier.fillMaxSize())
-                    VideoStageOverlayControls(state, onOpenControls, onRequestEnd)
+                    VideoStageOverlayControls(state, creatorName, creatorVerified, onOpenControls, onRequestEnd)
                 }
                 VideoChatPanel(
                     state = state,
@@ -636,6 +666,8 @@ fun VideoLiveLayout(
 @Composable
 private fun VideoStageOverlayControls(
     state: LiveSessionUiState,
+    creatorName: String,
+    creatorVerified: Boolean,
     onOpenControls: () -> Unit,
     onRequestEnd: () -> Unit
 ) {
@@ -662,6 +694,26 @@ private fun VideoStageOverlayControls(
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).testTag("live_viewer_count")
                     )
+                }
+                if (creatorVerified) {
+                    Surface(shape = RoundedCornerShape(6.dp), color = StudioObsidian.copy(alpha = 0.78f)) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = creatorName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                            VerifiedBadgeIcon(
+                                size = 13.dp,
+                                modifier = Modifier.testTag("live_verified_badge")
+                            )
+                        }
+                    }
                 }
             }
             Row {
@@ -742,6 +794,7 @@ private fun VideoChatPanel(
                                     initials = sc.initials,
                                     seed = sc.avatarSeed,
                                     hasProfilePicture = sc.hasProfilePicture,
+                                    imageUri = sc.avatarUri,
                                     size = 20.dp
                                 )
                                 Text(
@@ -804,6 +857,7 @@ private fun VideoChatPanel(
                             initials = msg.initials,
                             seed = msg.avatarSeed,
                             hasProfilePicture = msg.hasProfilePicture,
+                            imageUri = msg.avatarUri,
                             size = 26.dp
                         )
                         Column(modifier = Modifier.weight(1f)) {
@@ -859,6 +913,8 @@ private fun VideoChatPanel(
 @Composable
 fun GamingLiveLayout(
     state: LiveSessionUiState,
+    creatorName: String = "Creator",
+    creatorVerified: Boolean = false,
     draftMessage: String,
     onDraftChange: (String) -> Unit,
     onSendUtterance: () -> Unit,
@@ -879,7 +935,7 @@ fun GamingLiveLayout(
             Row(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.weight(0.58f).fillMaxHeight()) {
                     videoStageContent(Modifier.fillMaxSize())
-                    GamingStageHeader(state, onOpenControls, onRequestEnd)
+                    GamingStageHeader(state, creatorName, creatorVerified, onOpenControls, onRequestEnd)
                 }
                 GamingChatColumn(
                     state = state,
@@ -894,7 +950,7 @@ fun GamingLiveLayout(
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.fillMaxWidth().height(stageHeight)) {
                     videoStageContent(Modifier.fillMaxSize())
-                    GamingStageHeader(state, onOpenControls, onRequestEnd)
+                    GamingStageHeader(state, creatorName, creatorVerified, onOpenControls, onRequestEnd)
                 }
                 GamingChatColumn(
                     state = state,
@@ -912,6 +968,8 @@ fun GamingLiveLayout(
 @Composable
 private fun GamingStageHeader(
     state: LiveSessionUiState,
+    creatorName: String,
+    creatorVerified: Boolean,
     onOpenControls: () -> Unit,
     onRequestEnd: () -> Unit
 ) {
@@ -930,6 +988,26 @@ private fun GamingStageHeader(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).testTag("live_viewer_count")
                     )
+                }
+                if (creatorVerified) {
+                    Surface(shape = RoundedCornerShape(6.dp), color = StudioObsidian.copy(alpha = 0.78f)) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = creatorName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                            VerifiedBadgeIcon(
+                                size = 13.dp,
+                                modifier = Modifier.testTag("live_verified_badge")
+                            )
+                        }
+                    }
                 }
             }
             Row {
@@ -1065,6 +1143,7 @@ private fun GamingChatColumn(
                         initials = msg.initials,
                         seed = msg.avatarSeed,
                         hasProfilePicture = msg.hasProfilePicture,
+                        imageUri = msg.avatarUri,
                         size = 20.dp
                     )
                     val badgeColor = when (msg.archetype) {

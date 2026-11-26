@@ -259,4 +259,33 @@ class FameLifeEngineAcceptanceTest {
         val pfpRatio = withPfp.toFloat() / sampleSize.toFloat()
         assertTrue("Expected ~90% profile pictures (0.87..0.93), got $pfpRatio", pfpRatio in 0.87f..0.93f)
     }
+
+    @Test
+    fun `audience speakers use unique real human face assets without repeating across 89 face-bearing viewers`() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val bundledAssets = context.assets.list("pfp_faces")?.toSet().orEmpty()
+        assertEquals(89, com.example.engine.AudienceFaceAssets.FACE_FILES.size)
+        assertTrue(
+            "All 89 face JPEGs must be packaged in assets/pfp_faces",
+            com.example.engine.AudienceFaceAssets.FACE_FILES.all { it in bundledAssets }
+        )
+
+        val pop = IdentityPopulationEngine(populationSize = 100_000)
+        val rng = Random(2026L)
+        val speakers = pop.sampleSpeakers(
+            activeViewers = 5_000,
+            count = 95,
+            currentTick = 1,
+            random = rng,
+            memoryEnabled = false,
+            preferredLanguage = AudienceLanguage.ENGLISH
+        )
+        val faceUris = speakers.mapNotNull { it.avatarUri }
+        assertTrue("Expected most speakers to have real face URIs, got ${faceUris.size}", faceUris.size >= 75)
+        assertEquals(
+            "First 89 face-bearing viewers must receive 1-to-1 unique face assets with zero repeats",
+            faceUris.take(89).size,
+            faceUris.take(89).toSet().size
+        )
+    }
 }

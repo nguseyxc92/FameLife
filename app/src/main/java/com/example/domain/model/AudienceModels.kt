@@ -26,7 +26,8 @@ data class ViewerIdentity(
     val joinCount: Int = 1,
     val rememberedTopic: String? = null,
     val totalGiftedCoins: Int = 0,
-    val hasProfilePicture: Boolean = true
+    val hasProfilePicture: Boolean = true,
+    val avatarUri: String? = null
 )
 
 enum class ChatEventType {
@@ -59,7 +60,8 @@ data class ChatEvent(
     val virtualCoins: Int = 0,
     val isPinned: Boolean = false,
     val isReturningFan: Boolean = false,
-    val hasProfilePicture: Boolean = true
+    val hasProfilePicture: Boolean = true,
+    val avatarUri: String? = null
 )
 
 enum class GiftTier(val label: String, val priority: Int) {
@@ -101,7 +103,8 @@ data class GiftEvent(
     val count: Int = 1,
     val timestampMs: Long,
     val message: String? = null,
-    val hasProfilePicture: Boolean = true
+    val hasProfilePicture: Boolean = true,
+    val avatarUri: String? = null
 ) {
     val totalVirtualCoins: Int get() = gift.virtualCoins * count
 }
@@ -129,5 +132,6 @@ data class SupporterRank(
     val initials: String,
     val avatarSeed: Int,
     val totalCoins: Int,
-    val hasProfilePicture: Boolean = true
+    val hasProfilePicture: Boolean = true,
+    val avatarUri: String? = null
 )
