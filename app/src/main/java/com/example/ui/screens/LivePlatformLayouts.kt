@@ -69,7 +69,6 @@ import com.example.domain.model.ChatEvent
 import com.example.domain.model.ChatEventType
 import com.example.domain.model.ViewerArchetype
 import com.example.ui.components.FloatingHeartsColumn
-import com.example.ui.components.SimulationWatermarkPill
 import com.example.ui.components.SmallGiftBanner
 import com.example.ui.components.ViewerAvatar
 import com.example.ui.components.formatCompactCount
@@ -92,7 +91,6 @@ import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.VideoLiveGold
 import com.example.ui.theme.VideoLiveRed
-import com.example.viewmodel.AiStatus
 import com.example.viewmodel.LiveSessionUiState
 
 /**
@@ -214,15 +212,6 @@ fun PhotoLiveOverlay(
                             Icon(Icons.Default.Close, contentDescription = "End live", tint = Color.White)
                         }
                     }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SimulationWatermarkPill(compact = true)
-                    AiLatencyChip(state.aiStatus)
                 }
 
                 CreatorUtteranceBanner(state)
@@ -454,15 +443,6 @@ fun ShortLiveOverlay(
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SimulationWatermarkPill(compact = true)
-                    AiLatencyChip(state.aiStatus)
-                }
-
                 CreatorUtteranceBanner(state)
             }
 
@@ -658,7 +638,6 @@ private fun VideoStageOverlayControls(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).testTag("live_viewer_count")
                     )
                 }
-                SimulationWatermarkPill(compact = true)
             }
             Row {
                 IconButton(onClick = onOpenControls, modifier = Modifier.size(34.dp)) {
@@ -713,11 +692,8 @@ private fun VideoChatPanel(
                         color = TextSecondary
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    AiLatencyChip(state.aiStatus)
-                    IconButton(onClick = onOpenSearch, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Search, contentDescription = "Search chat", tint = TextPrimary, modifier = Modifier.size(18.dp))
-                    }
+                IconButton(onClick = onOpenSearch, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Search, contentDescription = "Search chat", tint = TextPrimary, modifier = Modifier.size(18.dp))
                 }
             }
 
@@ -767,7 +743,7 @@ private fun VideoChatPanel(
                                 style = MaterialTheme.typography.labelLarge,
                                 color = Color.White
                             )
-                            Text("SUPER CHAT (SIM)", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
+                            Text("SUPER CHAT", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.8f))
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(sc.text, style = MaterialTheme.typography.bodyMedium, color = Color.White)
@@ -920,7 +896,6 @@ private fun GamingStageHeader(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).testTag("live_viewer_count")
                     )
                 }
-                SimulationWatermarkPill(compact = true)
             }
             Row {
                 IconButton(onClick = onOpenControls, modifier = Modifier.size(34.dp)) {
@@ -966,7 +941,6 @@ private fun GamingChatColumn(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("TOP BITS (VIRTUAL)", style = MaterialTheme.typography.labelSmall, color = GamingLiveViolet)
-            AiLatencyChip(state.aiStatus)
         }
         Spacer(Modifier.height(6.dp))
         Row(
@@ -1029,7 +1003,7 @@ private fun GamingChatColumn(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(8.dp)) {
-                Text("Stream Summary (Simulated)", style = MaterialTheme.typography.labelSmall, color = GamingLiveViolet)
+                Text("Stream Summary", style = MaterialTheme.typography.labelSmall, color = GamingLiveViolet)
                 Text(
                     text = state.viralBannerText
                         ?: state.lastCreatorUtterance.ifBlank { "Live session ${formatDuration(state.elapsedSec)} • ${state.uniqueParticipants} active chatters" },
@@ -1133,28 +1107,6 @@ fun CreatorUtteranceBanner(state: LiveSessionUiState) {
                 )
             }
         }
-    }
-}
-
-@Composable
-fun AiLatencyChip(aiStatus: AiStatus) {
-    val (label, color) = when (aiStatus) {
-        AiStatus.Ready -> "AI Ready" to FameMint
-        AiStatus.Thinking -> "AI Thinking..." to ShortLiveNeon
-        is AiStatus.Active -> "${aiStatus.source.take(6)} • ${aiStatus.latencyMs}ms" to FameMint
-        is AiStatus.Degraded -> "Degraded (Offline)" to AlertAmber
-    }
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = StudioObsidian.copy(alpha = 0.75f),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.5f))
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-        )
     }
 }
 

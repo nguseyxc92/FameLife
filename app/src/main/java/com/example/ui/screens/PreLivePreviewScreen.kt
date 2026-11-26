@@ -58,7 +58,6 @@ import androidx.core.content.ContextCompat
 import com.example.data.UserSettings
 import com.example.domain.model.StreamSourceMode
 import com.example.media.LiveMediaStage
-import com.example.ui.components.SimulationWatermarkPill
 import com.example.ui.theme.FameMint
 import com.example.ui.theme.LiveCrimson
 import com.example.ui.theme.StudioObsidian
@@ -174,7 +173,6 @@ fun PreLivePreviewScreen(
                         )
                     }
                 }
-                SimulationWatermarkPill(compact = true)
             }
 
             // Bottom setup sheet
@@ -323,7 +321,7 @@ fun PreLivePreviewScreen(
                     ) {
                         Icon(Icons.Default.RadioButtonChecked, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Go Live (Simulated)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("Go Live", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
             }

@@ -412,7 +412,7 @@ fun LiveRoomScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = LiveCrimson, contentColor = Color.White),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
-                    Text("End Simulated Live", fontWeight = FontWeight.Bold)
+                    Text("End Livestream", fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(14.dp))
             }
@@ -513,10 +513,10 @@ fun LiveRoomScreen(
         AlertDialog(
             onDismissRequest = { showEndDialog = false },
             containerColor = StudioSurface,
-            title = { Text("End Simulated Livestream?") },
+            title = { Text("End Livestream?") },
             text = {
                 Text(
-                    "Camera, microphone, and screen capture will stop immediately. Your simulated stats (${formatCompactCount(state.peakViewers)} peak viewers, ${state.totalVirtualCoins} virtual coins) will be summarized.",
+                    "Camera, microphone, and screen capture will stop immediately. Your stream stats (${formatCompactCount(state.peakViewers)} peak viewers, ${state.totalVirtualCoins} virtual coins) will be summarized.",
                     color = TextSecondary
                 )
             },
